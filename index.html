@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descargador de Música</title>
+    <link rel="stylesheet" href="styleIndex.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Banner de advertencia -->
+        <div class="warning-banner">
+            <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <div class="warning-content">
+                <h3>Advertencia Legal</h3>
+                <p>El uso de esta herramienta se considera un delito en la mayoría de países. El descargar cualquier canción con derechos de autor queda bajo tu criterio y responsabilidad.</p>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header>
+            <h1>🎵 Descargador de Música</h1>
+            <p class="subtitle">Descarga música desde URL, archivo de texto o playlist de spotify</p>
+        </header>
+
+        <!-- Tabs de navegación -->
+        <div class="tabs">
+            <button class="tab active" data-tab="url">URL Individual</button>
+            <button class="tab" data-tab="file">Archivo .txt</button>
+            <button class="tab" data-tab="playlist">Playlist</button>
+        </div>
+
+        <!-- Contenido de las tabs -->
+        <div class="content">
+            <!-- Tab: URL Individual -->
+            <div class="tab-content active" id="url-tab">
+                <div class="input-group">
+                    <label for="single-url">Ingresa la URL del video/audio:</label>
+                    <input type="text" id="single-url" placeholder="https://www.youtube.com/watch?v=..." />
+                </div>
+                <div class="options">
+                    <label>
+                        <input type="checkbox" id="url-audio-only" checked />
+                        Solo audio (MP3)
+                    </label>
+                </div>
+                <button class="btn-download" onclick="downloadSingle()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Descargar
+                </button>
+            </div>
+
+            <!-- Tab: Archivo .txt -->
+            <div class="tab-content" id="file-tab">
+                <div class="input-group">
+                    <label for="txt-file">Selecciona un archivo .txt con URLs (una por línea):</label>
+                    <div class="file-input-wrapper" id="drop-zone">
+                        <input type="file" id="txt-file" accept=".txt,.xlsx,.xls,.csv" />
+                        <span class="file-name">Ningún archivo seleccionado</span>
+                    </div>
+                </div>
+                <div class="options">
+                    <label>
+                        <input type="checkbox" id="file-audio-only" checked />
+                        Solo audio (MP3)
+                    </label>
+                </div>
+                <button class="btn-download" onclick="downloadFromFile()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Descargar Todo
+                </button>
+            </div>
+
+            <!-- Tab: Playlist o Excel -->
+            <div class="tab-content" id="playlist-tab">
+                <div class="input-group">
+                    <label for="playlist-url">Ingresa la URL de la playlist o sube un archivo Excel:</label>
+                    <input type="text" id="playlist-url" placeholder="https://www.youtube.com/playlist?list=..." />
+                    
+                    <div style="text-align: center; margin: 15px 0; color: #666; font-size: 0.9em;">- O -</div>
+                    
+                    <div class="file-input-wrapper" id="playlist-drop-zone">
+                        <input type="file" id="excel-file" accept=".xlsx,.xls,.csv,.txt" />
+                        <span class="file-name-playlist">Ningún archivo seleccionado</span>
+                    </div>
+                </div>
+                <div class="options">
+                    <label>
+                        <input type="checkbox" id="playlist-audio-only" checked />
+                        Solo audio (MP3)
+                    </label>
+                </div>
+                <button class="btn-download" onclick="downloadPlaylist()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Descargar Playlist
+                </button>
+            </div>
+        </div>
+
+        <!-- Barra de progreso -->
+        <div class="progress-container" id="progress-container" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <p class="progress-text" id="progress-text">Procesando...</p>
+        </div>
+
+        <!-- Información general -->
+        <div class="info-box">
+            <h3>ℹ️ Información</h3>
+            <ul>
+                <li><strong>URL Individual:</strong> Descarga un solo video o audio desde su URL directa de YouTube.</li>
+                <li><strong>Archivo .txt:</strong> Sube un archivo de texto con múltiples URLs o nombres de canciones junto al nombre del artista (una por línea) para descarga masiva.</li>
+                <li><strong>Playlist:</strong> Descarga todos los videos de una playlist de Spotify u otras plataformas compatibles.</li>
+            </ul>
+        </div>
+        <br>
+
+
+
+
+        <div class="content">
+            
+            <!-- FAQ para URL Individual -->
+            <div class="tab-content active" id="url-faq">
+                <div class="info-box-FAQ">
+                    <h3>❓ Preguntas Frecuentes</h3>
+                    <h4>URL Individual</h4>
+                    <ul>
+                        <li><strong>¿De dónde saco la URL?:</strong> Abre YouTube, busca la canción que quieras, copia la URL que aparece arriba (caso de PC) o copia la URL de compartir video.</li>
+                        <li><strong>¿Cómo copio y pego la URL?:</strong> Usa Ctrl + C para copiar y Ctrl + V para pegar.</li>
+                    </ul>
+                </div>
+            </div>
+    
+            <!-- FAQ para Archivos .txt -->
+            <div class="tab-content" id="file-faq">
+                <div class="info-box-FAQ">
+                    <h3>❓ Preguntas Frecuentes</h3>
+                    <h4>Archivos .txt</h4>
+                    <ul>
+                        <li><strong>¿Qué estructura o formato deben de tener las canciones?:</strong> Debes escribir nombre de la canción y del artista, algo así como: "i dont care violent vira", no es necesario separar nombre de canción y artista, para la siguiente canción solo separa por un salto de línea. Te va a quedar como: 
+                            <br><code>i dont care violent vira</code>
+                            <br><code>damn girl rock n chile</code>
+                            <br><code>piel con piel la santa grifa</code>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+    
+            <!-- FAQ para Playlist/Excel -->
+            <div class="tab-content" id="playlist-faq">
+                <div class="info-box-FAQ">
+                    <h3>❓ Preguntas Frecuentes</h3>
+                    <h4>Playlist / Excel (.xlsx)</h4>
+                    <ul>
+                        <li><strong>Le subo mi archivo Excel y no se descarga:</strong> A veces pasa, vuelve a intentarlo, sino checa si el archivo que le estas metiendo es .xlsx o formato de libro. Si lo descargaste de Exportify abre el archivo excel → Archivo → Guardar como → Examinar → Tipo → Libro (es la opción de hasta arriba).</li>
+                        <li><strong>Le subo la URL de mi playlist de Spotify pero no se descarga:</strong> Lo sentimos, aún no tenemos esa función :( , pero puedes donar para que nos animemos a programarla :D .</li>
+                    </ul>
+                </div>
+                
+                <!-- Guía de Exportify (siempre visible en playlist) -->
+                <div class="info-box-FAQ">
+                    <h3>📚 Cómo usar Exportify</h3>
+                    <p>Lo que queremos es obtener un archivo xlsx de Excel que represente las canciones de algún álbum o playlist que hayas guardado en Spotify.</p>
+                    <ol>
+                        <li>Abre <a id="linkExportify" href="https://exportify.net/" target="_blank" rel="noopener noreferrer">Exportify</a></li>
+                        <li>Haz click en "Get Started"</li>
+                        <li>Inicia sesión en Spotify</li>
+                        <li>Elije la playlist que vas a querer descargar, ya que sepas cuál descargarás dale click en "Export"</li>
+                        <li>Se te descargará un archivo Excel .csv (este formato no nos sirve)</li>
+                        <li>Pásalo a formato xlsx: Abre el archivo .csv que se te descargó → Archivo → Guardar como → Examinar → Tipo → Libro de Excel (este es el tipo de archivo .xlsx)</li>
+                        <li>Arrastra el archivo excel .xlsx hacia el área de drop y descarga.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="scriptIndex.js"></script>
+</body>
+</html>
