@@ -9,9 +9,17 @@ import shutil
 import openpyxl
 import pandas as pd
 import csv
+from fastapi.staticfiles import StaticFiles
+
 # from io import StringIO
 
 app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+def root():
+    return FileResponse("index.html")
 
 # ⚠️ IMPORTANTE: Configurar CORS para permitir peticiones desde el frontend
 app.add_middleware(
