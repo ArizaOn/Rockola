@@ -247,7 +247,7 @@ async function downloadSingle() {
     try {
         updateProgress(30);
         
-        const response = await fetch("http://127.0.0.1:8000/download/", {
+        const response = await fetch("/download/", {
             method: "POST",
             body: formData
         });
@@ -315,7 +315,7 @@ async function downloadFromFile() {
     try {
         updateProgress(20);
         
-        const response = await fetch("http://127.0.0.1:8000/download_batch/", {
+        const response = await fetch("/download/", {
             method: "POST",
             body: formData
         });
