@@ -19,14 +19,19 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 def root():
     return FileResponse("index.html")
 
-# ⚠️ Configurar CORS
+# ⚠️ IMPORTANTE: Configurar CORS para permitir peticiones desde el frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # En producción, especifica el dominio exacto
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# 🔹 Ruta al archivo de cookies si existe
+COOKIES_PATH = "cookies.txt"  # Puedes cambiar esto a la ruta que uses
+USE_COOKIES = os.path.exists(COOKIES_PATH)
 
 
 @app.post("/download/")
@@ -39,8 +44,11 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
-        'cookiefile': 'cookies.txt',  # ✅ integración de cookies
     }
+
+    # Si hay cookies disponibles, agrégalas
+    if USE_COOKIES:
+        ydl_opts['cookiefile'] = COOKIES_PATH
 
     if format_type == "mp3":
         ydl_opts.update({
@@ -91,15 +99,17 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
             error_msg = "Video no disponible o URL inválida"
         elif "No video formats found" in error_msg:
             error_msg = "No se encontraron formatos disponibles para este video"
+
         return {"error": error_msg}
 
 
 def is_url(text: str) -> bool:
+    """Verifica si el texto es una URL válida"""
     return text.startswith(('http://', 'https://', 'www.'))
 
 
 def search_and_download(query: str, ydl_opts: dict) -> bool:
-    """Busca una canción en YouTube y descarga la primera con audio."""
+    """Busca una canción en YouTube y descarga la primera con audio"""
     try:
         search_url = f"ytsearch3:{query}"
         search_opts = {
@@ -107,11 +117,14 @@ def search_and_download(query: str, ydl_opts: dict) -> bool:
             'no_warnings': True,
             'extract_flat': False,
             'format': 'bestaudio/best',
-            'cookiefile': 'cookies.txt',  # ✅ cookies también aquí
         }
+
+        if USE_COOKIES:
+            search_opts['cookiefile'] = COOKIES_PATH
 
         with YoutubeDL(search_opts) as ydl:
             search_result = ydl.extract_info(search_url, download=False)
+
             if not search_result or 'entries' not in search_result:
                 print(f"❌ No se encontraron resultados para: {query}")
                 return False
@@ -120,7 +133,8 @@ def search_and_download(query: str, ydl_opts: dict) -> bool:
                 if entry and entry.get('id'):
                     try:
                         video_url = f"https://www.youtube.com/watch?v={entry['id']}"
-                        ydl_opts['cookiefile'] = 'cookies.txt'  # ✅ asegurado
+                        if USE_COOKIES:
+                            ydl_opts['cookiefile'] = COOKIES_PATH
                         with YoutubeDL(ydl_opts) as ydl_download:
                             ydl_download.download([video_url])
                         print(f"✅ Descargado: {query} -> {entry.get('title', 'Unknown')}")
@@ -128,48 +142,85 @@ def search_and_download(query: str, ydl_opts: dict) -> bool:
                     except Exception as e:
                         print(f"⚠️ Error con video {entry['id']}: {str(e)}")
                         continue
+
+            print(f"❌ No se pudo descargar ningún resultado para: {query}")
             return False
+
     except Exception as e:
         print(f"❌ Error buscando '{query}': {str(e)}")
         return False
 
 
 def process_excel_file(file_content: bytes) -> list:
+    """Procesa archivo Excel de Exportify y extrae canciones"""
     try:
         workbook = openpyxl.load_workbook(BytesIO(file_content))
         sheet = workbook.active
+
         songs = []
         headers = {}
+
         for col_idx, cell in enumerate(sheet[1], start=1):
             header = str(cell.value).strip().lower() if cell.value else ""
             if 'track name' in header or 'song' in header or 'title' in header:
                 headers['track'] = col_idx
             elif 'artist' in header:
                 headers['artist'] = col_idx
+
         if 'track' not in headers:
             print("⚠️ No se encontró columna de nombre de canción")
             return []
+
         for row_idx in range(2, sheet.max_row + 1):
             track_name = sheet.cell(row=row_idx, column=headers.get('track', 1)).value
             artist_name = sheet.cell(row=row_idx, column=headers.get('artist', 2)).value if 'artist' in headers else ""
+
             if track_name:
                 track_name = str(track_name).strip()
                 artist_name = str(artist_name).strip() if artist_name else ""
                 query = f"{track_name} {artist_name}".strip()
                 songs.append(query)
                 print(f"📝 Extraído: {query}")
+
         print(f"\n✅ Total de canciones extraídas: {len(songs)}")
         return songs
+
     except Exception as e:
         print(f"❌ Error procesando Excel: {str(e)}")
         return []
 
 
+def load_table(path):
+    ext = os.path.splitext(path)[1].lower()
+    if ext in [".xls", ".xlsx"]:
+        return pd.read_excel(path, dtype=str, engine='openpyxl', keep_default_na=False)
+    elif ext in [".csv", ".txt"]:
+        with open(path, "rb") as fb:
+            sample = fb.read(32768)
+        encodings_to_try = ["utf-8", "latin-1", "cp1252"]
+        last_err = None
+        for enc in encodings_to_try:
+            try:
+                s = sample.decode(enc)
+                sniffer = csv.Sniffer()
+                dialect = sniffer.sniff(s)
+                delim = dialect.delimiter
+                df = pd.read_csv(path, dtype=str, encoding=enc, sep=delim, keep_default_na=False)
+                return df
+            except Exception as e:
+                last_err = e
+                continue
+        raise ValueError(f"No pude leer el CSV. Último error: {last_err}")
+    else:
+        raise ValueError("Formato no soportado. Usa .csv, .txt, .xls o .xlsx")
+
+
 @app.post("/download_batch/")
 async def download_batch(file: UploadFile = File(...), format_type: str = Form("mp3")):
-    """Descarga múltiple desde archivo .txt o .xlsx"""
+    """Descarga múltiple desde archivo .txt o .xlsx (URLs o nombres de canciones)"""
     output_folder = "downloads"
     os.makedirs(output_folder, exist_ok=True)
+
     content = await file.read()
     lines = []
 
@@ -190,9 +241,11 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
         'quiet': True,
         'no_warnings': True,
         'ignoreerrors': True,
-        'cookiefile': 'cookies.txt',  # ✅ integración aquí también
         'outtmpl': f'{batch_folder}/%(title)s.%(ext)s',
     }
+
+    if USE_COOKIES:
+        ydl_opts['cookiefile'] = COOKIES_PATH
 
     if format_type == "mp3":
         ydl_opts.update({
@@ -215,13 +268,16 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
 
     try:
         print(f"\n🎵 Iniciando descarga de {len(lines)} canciones...\n")
+
         for idx, line in enumerate(lines, 1):
             print(f"[{idx}/{len(lines)}] Procesando: {line}")
+
             if is_url(line):
                 try:
                     with YoutubeDL(ydl_opts) as ydl:
                         ydl.download([line])
                     successful_downloads += 1
+                    print(f"✅ Descargado desde URL: {line}")
                 except Exception as e:
                     print(f"❌ Error con URL {line}: {str(e)}")
                     failed_downloads.append(line)
@@ -249,13 +305,16 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
             except Exception:
                 pass
 
+        print(f"\n📦 Completado: {successful_downloads} exitosas, {len(failed_downloads)} fallidas")
+        if failed_downloads:
+            print(f"❌ Fallidas: {', '.join(failed_downloads[:10])}")
+
         return FileResponse(
             path=f"{zip_path}.zip",
             filename="batch_download.zip",
             media_type="application/zip",
             background=cleanup
         )
-
     except Exception as e:
         if os.path.exists(batch_folder):
             shutil.rmtree(batch_folder)
@@ -269,6 +328,7 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
     """Descarga playlist completa"""
     output_folder = "downloads"
     os.makedirs(output_folder, exist_ok=True)
+
     playlist_id = str(uuid.uuid4())
     playlist_folder = os.path.join(output_folder, playlist_id)
     os.makedirs(playlist_folder, exist_ok=True)
@@ -277,8 +337,10 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
         'quiet': True,
         'no_warnings': True,
         'ignoreerrors': True,
-        'cookiefile': 'cookies.txt',  # ✅ también aquí
     }
+
+    if USE_COOKIES:
+        ydl_opts['cookiefile'] = COOKIES_PATH
 
     if format_type == "mp3":
         ydl_opts.update({
@@ -323,13 +385,17 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
             media_type="application/zip",
             background=cleanup
         )
-
     except Exception as e:
         if os.path.exists(playlist_folder):
             shutil.rmtree(playlist_folder)
         if zip_path and os.path.exists(f"{zip_path}.zip"):
             os.remove(f"{zip_path}.zip")
-        return {"error": str(e)}
+
+        error_msg = str(e)
+        if "playlist" in error_msg.lower() and "not" in error_msg.lower():
+            error_msg = "La URL no parece ser una playlist válida"
+
+        return {"error": error_msg}
 
 
 if __name__ == "__main__":
