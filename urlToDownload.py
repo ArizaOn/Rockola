@@ -6,6 +6,9 @@ import os
 import uuid
 import shutil
 import re
+import openpyxl
+import pandas as pd
+import csv
 
 app = FastAPI()
 
@@ -17,10 +20,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-COOKIES_FILE = "cookies.txt"  # <-- aquí tu archivo de cookies exportado desde el navegador
+# -------------------- CONFIG --------------------
+COOKIES_FILE = "cookies.txt"  # <-- tu archivo de cookies exportado desde el navegador
 
-
-def is_url(text):
+# -------------------- UTILIDADES --------------------
+def is_url(text: str) -> bool:
     """Verifica si el texto es una URL válida"""
     url_pattern = re.compile(
         r'^https?://'  # http:// o https://
@@ -32,29 +36,88 @@ def is_url(text):
     return url_pattern.match(text) is not None
 
 
+def load_table(path):
+    ext = os.path.splitext(path)[1].lower()
+    if ext in [".xls", ".xlsx"]:
+        return pd.read_excel(path, dtype=str, engine='openpyxl', keep_default_na=False)
+    elif ext in [".csv", ".txt"]:
+        with open(path, "rb") as fb:
+            sample = fb.read(32768)
+        encodings_to_try = ["utf-8", "latin-1", "cp1252"]
+        last_err = None
+        for enc in encodings_to_try:
+            try:
+                s = sample.decode(enc)
+                sniffer = csv.Sniffer()
+                dialect = sniffer.sniff(s)
+                delim = dialect.delimiter
+                df = pd.read_csv(path, dtype=str, encoding=enc, sep=delim, keep_default_na=False)
+                return df
+            except Exception as e:
+                last_err = e
+                continue
+        raise ValueError(f"No pude leer el CSV. Último error: {last_err}")
+    else:
+        raise ValueError("Formato no soportado. Usa .csv, .txt, .xls o .xlsx")
+
+
+def process_excel_file(file_content: bytes) -> list:
+    """Procesa archivo Excel y extrae canciones"""
+    try:
+        workbook = openpyxl.load_workbook(BytesIO(file_content))
+        sheet = workbook.active
+        songs = []
+        headers = {}
+
+        for col_idx, cell in enumerate(sheet[1], start=1):
+            header = str(cell.value).strip().lower() if cell.value else ""
+            if 'track name' in header or 'song' in header or 'title' in header:
+                headers['track'] = col_idx
+            elif 'artist' in header:
+                headers['artist'] = col_idx
+
+        if 'track' not in headers:
+            print("⚠️ No se encontró columna de nombre de canción")
+            return []
+
+        for row_idx in range(2, sheet.max_row + 1):
+            track_name = sheet.cell(row=row_idx, column=headers.get('track', 1)).value
+            artist_name = sheet.cell(row=row_idx, column=headers.get('artist', 2)).value if 'artist' in headers else ""
+
+            if track_name:
+                track_name = str(track_name).strip()
+                artist_name = str(artist_name).strip() if artist_name else ""
+                query = f"{track_name} {artist_name}".strip()
+                songs.append(query)
+                print(f"📝 Extraído: {query}")
+
+        print(f"\n✅ Total de canciones extraídas: {len(songs)}")
+        return songs
+
+    except Exception as e:
+        print(f"❌ Error procesando Excel: {str(e)}")
+        return []
+
+
+# -------------------- DESCARGA INDIVIDUAL --------------------
 @app.post("/download/")
 def download(url: str = Form(...), format_type: str = Form("mp3")):
-    """Descarga individual desde URL"""
     output_folder = "downloads"
     os.makedirs(output_folder, exist_ok=True)
     filename = str(uuid.uuid4())
 
     ydl_opts = {
-        'quiet': False,
-        'no_warnings': False,
+        'quiet': True,
+        'no_warnings': True,
         'cookiefile': COOKIES_FILE,
-        'extractor_args': {'youtubetab': ['skip=authcheck']},  # evita errores RDMM
+        'extractor_args': {'youtubetab': ['skip=authcheck']},
     }
 
     if format_type == "mp3":
         ydl_opts.update({
             'format': 'bestaudio/best',
             'outtmpl': f'{output_folder}/{filename}.%(ext)s',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
+            'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}],
         })
     else:
         ydl_opts.update({
@@ -70,36 +133,18 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
         for file in os.listdir(output_folder):
             if file.startswith(filename):
                 file_path = os.path.join(output_folder, file)
-
                 def cleanup():
-                    try:
-                        if os.path.exists(file_path):
-                            os.remove(file_path)
-                    except Exception:
-                        pass
-
-                return FileResponse(
-                    path=file_path,
-                    filename=file,
-                    media_type="application/octet-stream",
-                    background=cleanup
-                )
+                    try: os.remove(file_path)
+                    except Exception: pass
+                return FileResponse(path=file_path, filename=file, media_type="application/octet-stream", background=cleanup)
 
         return {"error": "No se pudo encontrar el archivo descargado"}
 
     except Exception as e:
-        error_msg = str(e)
-        if "HTTP Error 403" in error_msg:
-            error_msg = "Error 403: El video podría tener restricciones de región o edad"
-        elif "Video unavailable" in error_msg:
-            error_msg = "Video no disponible o URL inválida"
-        elif "No video formats found" in error_msg:
-            error_msg = "No se encontraron formatos disponibles para este video"
-
-        return {"error": error_msg}
+        return {"error": str(e)}
 
 
-# -------------------- DOWNLOAD BATCH --------------------
+# -------------------- DESCARGA BATCH --------------------
 @app.post("/download_batch/")
 async def download_batch(file: UploadFile = File(...), format_type: str = Form("mp3")):
     output_folder = "downloads"
@@ -125,29 +170,18 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
             search_query = f"ytsearch1:{line}"
 
         ydl_opts = {
-            'quiet': False,
-            'no_warnings': False,
+            'quiet': True,
+            'no_warnings': True,
             'ignoreerrors': True,
             'cookiefile': COOKIES_FILE,
             'extractor_args': {'youtubetab': ['skip=authcheck']},
+            'outtmpl': f'{batch_folder}/%(title)s.%(ext)s'
         }
 
         if format_type == "mp3":
-            ydl_opts.update({
-                'format': 'bestaudio/best',
-                'outtmpl': f'{batch_folder}/%(title)s.%(ext)s',
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
-                }],
-            })
+            ydl_opts['postprocessors'] = [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}]
         else:
-            ydl_opts.update({
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-                'outtmpl': f'{batch_folder}/%(title)s.%(ext)s',
-                'merge_output_format': 'mp4',
-            })
+            ydl_opts['merge_output_format'] = 'mp4'
 
         try:
             with YoutubeDL(ydl_opts) as ydl:
@@ -165,21 +199,13 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
     shutil.rmtree(batch_folder)
 
     def cleanup():
-        try:
-            if os.path.exists(f"{zip_path}.zip"):
-                os.remove(f"{zip_path}.zip")
-        except Exception:
-            pass
+        try: os.remove(f"{zip_path}.zip")
+        except Exception: pass
 
-    return FileResponse(
-        path=f"{zip_path}.zip",
-        filename="batch_download.zip",
-        media_type="application/zip",
-        background=cleanup
-    )
+    return FileResponse(path=f"{zip_path}.zip", filename="batch_download.zip", media_type="application/zip", background=cleanup)
 
 
-# -------------------- DOWNLOAD PLAYLIST --------------------
+# -------------------- DESCARGA PLAYLIST --------------------
 @app.post("/download_playlist/")
 def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
     output_folder = "downloads"
@@ -201,11 +227,7 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
         ydl_opts.update({
             'format': 'bestaudio/best',
             'outtmpl': f'{playlist_folder}/%(playlist_index)s - %(title)s.%(ext)s',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
+            'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}],
         })
     else:
         ydl_opts.update({
@@ -227,18 +249,10 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
         shutil.rmtree(playlist_folder)
 
         def cleanup():
-            try:
-                if os.path.exists(f"{zip_path}.zip"):
-                    os.remove(f"{zip_path}.zip")
-            except Exception:
-                pass
+            try: os.remove(f"{zip_path}.zip")
+            except Exception: pass
 
-        return FileResponse(
-            path=f"{zip_path}.zip",
-            filename="playlist_download.zip",
-            media_type="application/zip",
-            background=cleanup
-        )
+        return FileResponse(path=f"{zip_path}.zip", filename="playlist_download.zip", media_type="application/zip", background=cleanup)
 
     except Exception as e:
         if os.path.exists(playlist_folder):
