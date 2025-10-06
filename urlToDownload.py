@@ -170,8 +170,8 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
             search_query = f"ytsearch1:{line}"
 
         ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
+            'quiet': False,
+            'no_warnings': False,
             'ignoreerrors': True,
             'cookiefile': COOKIES_FILE,
             'extractor_args': {'youtubetab': ['skip=authcheck']},
