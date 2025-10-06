@@ -107,8 +107,8 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
     filename = str(uuid.uuid4())
 
     ydl_opts = {
-        'quiet': True,
-        'no_warnings': True,
+        'quiet': False,
+        'no_warnings': False,
         'cookiefile': COOKIES_FILE,
         'extractor_args': {'youtubetab': ['skip=authcheck']},
     }
