@@ -9,7 +9,31 @@ import shutil
 import openpyxl
 import pandas as pd
 import csv
+import subprocess
 from fastapi.staticfiles import StaticFiles
+
+# 🔧 Generar cookies al iniciar si no existen
+def init_cookies():
+    """Intenta generar cookies automáticamente al iniciar"""
+    COOKIES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
+    if not os.path.exists(COOKIES_PATH) or os.path.getsize(COOKIES_PATH) < 100:
+        print("🔄 Generando cookies desde Chrome...")
+        try:
+            cmd = [
+                "yt-dlp",
+                "--cookies-from-browser", "chrome",
+                "--write-cookies",
+                "--cookies", COOKIES_PATH,
+                "https://www.youtube.com"
+            ]
+            subprocess.run(cmd, capture_output=True, timeout=30)
+            if os.path.exists(COOKIES_PATH) and os.path.getsize(COOKIES_PATH) > 100:
+                print("✅ Cookies generadas exitosamente")
+        except Exception as e:
+            print(f"⚠️ No se pudo generar cookies automáticamente: {str(e)}")
+
+# Ejecutar al iniciar
+init_cookies()
 
 app = FastAPI()
 
