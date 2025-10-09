@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from fastapi import FastAPI, Form, File, UploadFile
 from fastapi.responses import FileResponse
 from io import BytesIO
@@ -10,30 +11,92 @@ import openpyxl
 import pandas as pd
 import csv
 import subprocess
+import sys
 from fastapi.staticfiles import StaticFiles
 
-# 🔧 Generar cookies al iniciar si no existen
-def init_cookies():
-    """Intenta generar cookies automáticamente al iniciar"""
-    COOKIES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
-    if not os.path.exists(COOKIES_PATH) or os.path.getsize(COOKIES_PATH) < 100:
-        print("🔄 Generando cookies desde Chrome...")
-        try:
-            cmd = [
-                "yt-dlp",
-                "--cookies-from-browser", "chrome",
-                "--write-cookies",
-                "--cookies", COOKIES_PATH,
-                "https://www.youtube.com"
-            ]
-            subprocess.run(cmd, capture_output=True, timeout=30)
-            if os.path.exists(COOKIES_PATH) and os.path.getsize(COOKIES_PATH) > 100:
-                print("✅ Cookies generadas exitosamente")
-        except Exception as e:
-            print(f"⚠️ No se pudo generar cookies automáticamente: {str(e)}")
+# ============================================================
+# 🔧 GENERADOR DE COOKIES - Ejecuta al iniciar
+# ============================================================
 
-# Ejecutar al iniciar
-init_cookies()
+COOKIES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
+
+def generate_cookies():
+    """Genera el archivo cookies.txt usando yt-dlp y Chrome"""
+    
+    print("🔄 Generando cookies desde Chrome...")
+    print(f"📁 Ruta: {COOKIES_PATH}")
+    
+    try:
+        # Comando para generar cookies
+        cmd = [
+            "yt-dlp",
+            "--cookies-from-browser", "chrome",
+            "--write-cookies",
+            "--cookies", COOKIES_PATH,
+            "https://www.youtube.com"
+        ]
+        
+        # Ejecutar el comando
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        
+        if result.returncode == 0:
+            if os.path.exists(COOKIES_PATH):
+                file_size = os.path.getsize(COOKIES_PATH)
+                print(f"✅ Cookies generadas exitosamente!")
+                print(f"📊 Tamaño del archivo: {file_size} bytes")
+                return True
+            else:
+                print("⚠️ El archivo de cookies no se creó")
+                return False
+        else:
+            print(f"❌ Error al generar cookies:")
+            print(f"STDOUT: {result.stdout}")
+            print(f"STDERR: {result.stderr}")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print("❌ Timeout: El proceso tardó demasiado")
+        return False
+    except FileNotFoundError:
+        print("❌ Error: yt-dlp no está instalado")
+        print("Instálalo con: pip install yt-dlp")
+        return False
+    except Exception as e:
+        print(f"❌ Error inesperado: {str(e)}")
+        return False
+
+def check_cookies():
+    """Verifica si el archivo de cookies existe y es válido"""
+    if os.path.exists(COOKIES_PATH):
+        file_size = os.path.getsize(COOKIES_PATH)
+        if file_size > 100:  # Al menos 100 bytes
+            print(f"✅ Archivo de cookies existente encontrado ({file_size} bytes)")
+            return True
+        else:
+            print(f"⚠️ Archivo de cookies muy pequeño ({file_size} bytes), regenerando...")
+            return False
+    return False
+
+# Ejecutar generador de cookies al iniciar
+print("=" * 50)
+print("🎬 Generador de Cookies para yt-dlp")
+print("=" * 50)
+
+if check_cookies():
+    print("💾 Usando cookies existentes")
+else:
+    print("\n📝 Creando nuevas cookies...")
+    if generate_cookies():
+        print("\n✅ Cookies listas!")
+    else:
+        print("\n⚠️ No se pudo generar las cookies automáticamente")
+        print("El servidor intentará funcionar sin cookies")
+
+print("=" * 50)
+
+# ============================================================
+# 🚀 INICIAR FASTAPI
+# ============================================================
 
 app = FastAPI()
 
