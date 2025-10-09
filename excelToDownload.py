@@ -29,8 +29,8 @@ app.add_middleware(
 )
 
 
-# 🔹 Ruta al archivo de cookies si existe
-COOKIES_PATH = "cookies.txt"  # Puedes cambiar esto a la ruta que uses
+# 🔹 Ruta al archivo de cookies
+COOKIES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
 USE_COOKIES = os.path.exists(COOKIES_PATH)
 
 
