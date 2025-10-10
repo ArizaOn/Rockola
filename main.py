@@ -13,6 +13,13 @@ import pandas as pd
 import csv
 from fastapi.staticfiles import StaticFiles
 
+import subprocess
+import sys
+
+# Configurar FFmpeg
+os.environ['PATH'] = r'C:\Users\ariza\Documents\GitHub\Rockola' + os.pathsep + os.environ['PATH']
+os.environ['FFMPEG_BINARY'] = r'C:\Users\ariza\Documents\GitHub\Rockola\ffmpeg.exe'
+
 # ============================================================
 # 🚀 INICIAR FASTAPI
 # ============================================================
