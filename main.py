@@ -25,7 +25,7 @@ ydl_opts = {
     'quiet': True,
     'no_warnings': True,
     'ignoreerrors': True,
-    'cookiefile': COOKIES_FILE,
+    # 'cookiefile': COOKIES_FILE,
     'extractor_args': {'youtubetab': ['skip=authcheck']},
     'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
     'http_headers': {
@@ -66,6 +66,7 @@ USE_COOKIES = os.path.exists(COOKIES_PATH) and os.path.getsize(COOKIES_PATH) > 1
 
 print("=" * 50)
 if USE_COOKIES:
+    ydl_opts['cookiefile'] = COOKIES_PATH
     print(f"✅ Usando cookies desde: {COOKIES_PATH}")
 else:
     print("⚠️ No se encontraron cookies. El servidor funcionará sin cookies.")
