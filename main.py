@@ -20,6 +20,21 @@ import sys
 os.environ['PATH'] = r'C:\Users\ariza\Documents\GitHub\Rockola' + os.pathsep + os.environ['PATH']
 os.environ['FFMPEG_BINARY'] = r'C:\Users\ariza\Documents\GitHub\Rockola\ffmpeg.exe'
 
+ydl_opts = {
+    'proxy': 'http://usuario:contraseña@tu_ip_publica:puerto',
+    'quiet': True,
+    'no_warnings': True,
+    'ignoreerrors': True,
+    'cookiefile': COOKIES_FILE,
+    'extractor_args': {'youtubetab': ['skip=authcheck']},
+    'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+    'http_headers': {
+        'Accept-Language': 'es-ES,es;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://www.youtube.com/',
+    },
+}
+
 # ============================================================
 # 🚀 INICIAR FASTAPI
 # ============================================================
