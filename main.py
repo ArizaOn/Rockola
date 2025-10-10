@@ -210,17 +210,38 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
         with YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
+        # for file in os.listdir(output_folder):
+        #     if file.startswith(filename):
+        #         file_path = os.path.join(output_folder, file)
+                
+        #         # Renombrar si tiene extensión incorrecta (ej: .mp3_ a .mp3)
+        #         if file.endswith('_'):
+        #             new_file = file[:-1]
+        #             new_file_path = os.path.join(output_folder, new_file)
+        #             os.rename(file_path, new_file_path)
+        #             file_path = new_file_path
+        #             file = new_file
+
+        import time
+
         for file in os.listdir(output_folder):
             if file.startswith(filename):
                 file_path = os.path.join(output_folder, file)
                 
-                # Renombrar si tiene extensión incorrecta (ej: .mp3_ a .mp3)
+                # Esperar si todavía termina de escribirse
+                while file.endswith('_') and os.path.exists(file_path):
+                    time.sleep(0.1)
+                    file = os.listdir(output_folder)[0]
+                    file_path = os.path.join(output_folder, file)
+                
+                # Renombrar si queda con guion bajo
                 if file.endswith('_'):
                     new_file = file[:-1]
                     new_file_path = os.path.join(output_folder, new_file)
                     os.rename(file_path, new_file_path)
                     file_path = new_file_path
                     file = new_file
+
 
                 def cleanup():
                     try:
