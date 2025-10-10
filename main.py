@@ -16,6 +16,15 @@ from fastapi.staticfiles import StaticFiles
 import subprocess
 import sys
 
+from starlette.background import BackgroundTask
+
+def cleanup_file(path):
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass
+
 # Configurar FFmpeg
 os.environ['PATH'] = r'C:\Users\ariza\Documents\GitHub\Rockola' + os.pathsep + os.environ['PATH']
 os.environ['FFMPEG_BINARY'] = r'C:\Users\ariza\Documents\GitHub\Rockola\ffmpeg.exe'
@@ -254,8 +263,9 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
                     path=file_path,
                     filename=file,
                     media_type="application/octet-stream",
-                    background=cleanup
+                    background=BackgroundTask(cleanup_file, file_path)
                 )
+
 
         return {"error": "No se pudo encontrar el archivo descargado"}
 
