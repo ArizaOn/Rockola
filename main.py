@@ -17,7 +17,6 @@ import sys
 import time
 import glob
 from starlette.background import BackgroundTask
-import pandas as pd
 
 def cleanup_file(path):
     try:
@@ -245,39 +244,40 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
         with YoutubeDL(ydl_opts_download) as ydl:
             ydl.download([url])
 
-        # Buscar el archivo descargado
-        for file in os.listdir(output_folder):
-            if file.startswith(filename):
-                file_path = os.path.join(output_folder, file)
-                
-                # Esperar si todavía tiene guion bajo (ffmpeg lo agrega mientras procesa)
-                timeout = 30
-                start_time = time.time()
-                while file.endswith('_') and os.path.exists(file_path):
-                    if time.time() - start_time > timeout:
-                        print(f"⚠️ Timeout esperando finalización de {file}")
-                        break
-                    time.sleep(0.1)
-                
-                # Renombrar si queda con guion bajo
-                if file.endswith('_') and os.path.exists(file_path):
-                    new_file = file[:-1]
-                    new_file_path = os.path.join(output_folder, new_file)
-                    try:
-                        os.rename(file_path, new_file_path)
-                        file_path = new_file_path
-                        file = new_file
-                    except Exception as e:
-                        print(f"⚠️ Error al renombrar archivo: {e}")
-
-                return FileResponse(
-                    path=file_path,
-                    filename=file,
-                    media_type="application/octet-stream",
-                    background=BackgroundTask(cleanup_file, file_path)
-                )
-
-        return {"error": "No se pudo encontrar el archivo descargado"}
+        # Esperar a que FFmpeg termine de procesar
+        timeout = 120  # 2 minutos máximo
+        start_time = time.time()
+        file_found = None
+        
+        while time.time() - start_time < timeout:
+            files_in_folder = os.listdir(output_folder)
+            
+            # Buscar archivos que coincidan con el UUID y NO terminen en _
+            for file in files_in_folder:
+                if file.startswith(filename) and not file.endswith('_'):
+                    file_found = file
+                    break
+            
+            if file_found:
+                break
+            
+            time.sleep(0.5)
+        
+        if not file_found:
+            print(f"❌ No se encontró archivo después de {timeout} segundos")
+            print(f"Archivos en la carpeta: {os.listdir(output_folder)}")
+            return {"error": "Timeout: No se pudo completar la conversión del archivo"}
+        
+        file_path = os.path.join(output_folder, file_found)
+        
+        print(f"✅ Archivo encontrado: {file_found}")
+        
+        return FileResponse(
+            path=file_path,
+            filename=file_found,
+            media_type="application/octet-stream",
+            background=BackgroundTask(cleanup_file, file_path)
+        )
 
     except Exception as e:
         error_msg = str(e)
