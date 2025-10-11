@@ -18,12 +18,15 @@ import time
 import glob
 from starlette.background import BackgroundTask
 
-def cleanup_file(path):
+def cleanup_file(path, delay=5):
+    """Limpia el archivo después de un delay para permitir la descarga"""
+    time.sleep(delay)
     try:
         if os.path.exists(path):
             os.remove(path)
-    except Exception:
-        pass
+            print(f"✅ Archivo limpiado: {path}")
+    except Exception as e:
+        print(f"⚠️ No se pudo limpiar {path}: {e}")
 
 # ============================================================
 # 🛠️ LIMPIAR ARCHIVOS ANTIGUOS AL INICIAR
@@ -276,7 +279,7 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
             path=file_path,
             filename=file_found,
             media_type="application/octet-stream",
-            background=BackgroundTask(cleanup_file, file_path)
+            background=BackgroundTask(cleanup_file, file_path, delay=10)
         )
 
     except Exception as e:
@@ -382,7 +385,7 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
             path=f"{zip_path}.zip",
             filename="batch_download.zip",
             media_type="application/zip",
-            background=BackgroundTask(cleanup_file, f"{zip_path}.zip")
+            background=BackgroundTask(cleanup_file, f"{zip_path}.zip", delay=10)
         )
     except Exception as e:
         if os.path.exists(batch_folder):
