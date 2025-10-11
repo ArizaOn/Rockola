@@ -1,34 +1,27 @@
 // Manejo de tabs
-// Manejo de pestañas (contenido + FAQ + guía de Exportify)
 document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
         const tabName = tab.dataset.tab;
 
-        // Quitar clases activas
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-        // Activar la pestaña seleccionada
         tab.classList.add('active');
 
-        // Mostrar los elementos correspondientes
         const mainTab = document.getElementById(`${tabName}-tab`);
         const faqTab = document.getElementById(`${tabName}-faq`);
-        const guideTab = document.getElementById(`${tabName}-guide`); // solo existe en playlist
+        const guideTab = document.getElementById(`${tabName}-guide`);
 
         if (mainTab) mainTab.classList.add('active');
         if (faqTab) faqTab.classList.add('active');
-        if (guideTab) guideTab.classList.add('active'); // aparece solo en playlist
+        if (guideTab) guideTab.classList.add('active');
     });
 });
-
-
 
 // ========== DRAG & DROP PARA ARCHIVO .TXT ==========
 const dropArea = document.getElementById('drop-zone');
 const fileInput = document.getElementById('txt-file');
 
-// Función de validación de tipo (soporta .txt, .xlsx, .xls)
 function typeValidation(type) {
     const validTypes = [
         'text/plain',
@@ -40,7 +33,6 @@ function typeValidation(type) {
     return validTypes.includes(type);
 }
 
-// Prevenir comportamiento por defecto
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
     dropArea.addEventListener(eventName, (e) => {
         e.preventDefault();
@@ -48,7 +40,6 @@ function typeValidation(type) {
     }, false);
 });
 
-// Cuando el archivo entra en la zona
 dropArea.addEventListener('dragenter', (e) => {
     [...e.dataTransfer.items].forEach((item) => {
         if (typeValidation(item.type)) {
@@ -57,7 +48,6 @@ dropArea.addEventListener('dragenter', (e) => {
     });
 });
 
-// Mientras el archivo está sobre la zona
 dropArea.addEventListener('dragover', (e) => {
     [...e.dataTransfer.items].forEach((item) => {
         if (typeValidation(item.type)) {
@@ -66,14 +56,12 @@ dropArea.addEventListener('dragover', (e) => {
     });
 });
 
-// Cuando el archivo sale de la zona
 dropArea.addEventListener('dragleave', (e) => {
     if (e.target === dropArea || !dropArea.contains(e.relatedTarget)) {
         dropArea.classList.remove('drag-over-effect');
     }
 });
 
-// Cuando se suelta el archivo
 dropArea.addEventListener('drop', (e) => {
     dropArea.classList.remove('drag-over-effect');
     
@@ -81,8 +69,6 @@ dropArea.addEventListener('drop', (e) => {
     
     if (files.length > 0) {
         const file = files[0];
-        
-        // Validar extensión y tipo MIME
         const validExtensions = ['.txt', '.xlsx', '.xls'];
         const hasValidExtension = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
         const hasValidType = typeValidation(file.type);
@@ -110,12 +96,10 @@ dropArea.addEventListener('drop', (e) => {
     }
 });
 
-// Click para abrir selector de archivos
 dropArea.addEventListener('click', () => {
     fileInput.click();
 });
 
-// Actualizar nombre cuando se selecciona desde el input
 fileInput.addEventListener('change', (e) => {
     const fileName = e.target.files[0]?.name || 'Ningún archivo seleccionado';
     document.querySelector('.file-name').textContent = fileName;
@@ -125,7 +109,6 @@ fileInput.addEventListener('change', (e) => {
 const playlistDropArea = document.getElementById('playlist-drop-zone');
 const excelFileInput = document.getElementById('excel-file');
 
-// Función de validación específica para Excel
 function excelTypeValidation(type, filename) {
     const validTypes = [
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -139,7 +122,6 @@ function excelTypeValidation(type, filename) {
     return hasValidType || hasValidExtension;
 }
 
-// Prevenir comportamiento por defecto
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
     playlistDropArea.addEventListener(eventName, (e) => {
         e.preventDefault();
@@ -147,24 +129,20 @@ function excelTypeValidation(type, filename) {
     }, false);
 });
 
-// Cuando el archivo entra
 playlistDropArea.addEventListener('dragenter', (e) => {
     playlistDropArea.classList.add('drag-over-effect');
 });
 
-// Mientras está sobre la zona
 playlistDropArea.addEventListener('dragover', (e) => {
     playlistDropArea.classList.add('drag-over-effect');
 });
 
-// Cuando sale
 playlistDropArea.addEventListener('dragleave', (e) => {
     if (e.target === playlistDropArea || !playlistDropArea.contains(e.relatedTarget)) {
         playlistDropArea.classList.remove('drag-over-effect');
     }
 });
 
-// Cuando se suelta
 playlistDropArea.addEventListener('drop', (e) => {
     playlistDropArea.classList.remove('drag-over-effect');
     
@@ -196,12 +174,10 @@ playlistDropArea.addEventListener('drop', (e) => {
     }
 });
 
-// Click para abrir selector
 playlistDropArea.addEventListener('click', () => {
     excelFileInput.click();
 });
 
-// Actualizar nombre cuando se selecciona
 excelFileInput.addEventListener('change', (e) => {
     const fileName = e.target.files[0]?.name || 'Ningún archivo Excel seleccionado';
     document.querySelector('.file-name-playlist').textContent = fileName;
@@ -225,9 +201,27 @@ function updateProgress(percent) {
     fill.style.width = percent + '%';
 }
 
+// ========== FUNCIÓN AUXILIAR PARA HACER FETCH CON TIMEOUT ==========
+async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+    }
+}
+
 // ========== FUNCIONES DE DESCARGA ==========
 
-// Descarga individual desde URL
+// Descarga individual desde URL (TIMEOUT: 15 minutos)
 async function downloadSingle() {
     const url = document.getElementById('single-url').value;
     const audioOnly = document.getElementById('url-audio-only').checked;
@@ -246,11 +240,13 @@ async function downloadSingle() {
 
     try {
         updateProgress(30);
+        console.log("Iniciando descarga individual desde:", url);
         
-        const response = await fetch("/download/", {
+        // 15 minutos para URL individual
+        const response = await fetchWithTimeout("/download/", {
             method: "POST",
             body: formData
-        });
+        }, 15 * 60 * 1000);
 
         updateProgress(60);
 
@@ -284,13 +280,18 @@ async function downloadSingle() {
         }, 500);
 
     } catch (err) {
-        console.error(err);
+        console.error('Error en descarga individual:', err);
         hideProgress();
-        alert("Error al descargar el archivo: " + err.message);
+        
+        if (err.name === 'AbortError') {
+            alert("La descarga tardó más de 15 minutos. Intenta de nuevo.");
+        } else {
+            alert("Error al descargar el archivo: " + err.message);
+        }
     }
 }
 
-// Descarga desde archivo .txt o .xlsx
+// Descarga desde archivo .txt o .xlsx (TIMEOUT: 90 minutos)
 async function downloadFromFile() {
     const file = document.getElementById('txt-file').files[0];
     const audioOnly = document.getElementById('file-audio-only').checked;
@@ -314,11 +315,13 @@ async function downloadFromFile() {
 
     try {
         updateProgress(20);
+        console.log("Iniciando descarga de archivo:", file.name);
         
-        const response = await fetch("/download/", {
+        // 90 minutos para archivo .txt o .xlsx
+        const response = await fetchWithTimeout("/download_batch/", {
             method: "POST",
             body: formData
-        });
+        }, 90 * 60 * 1000);
 
         updateProgress(70);
 
@@ -344,13 +347,18 @@ async function downloadFromFile() {
         }, 500);
 
     } catch (err) {
-        console.error(err);
+        console.error('Error en descarga de archivo:', err);
         hideProgress();
-        alert("Error al descargar los archivos: " + err.message);
+        
+        if (err.name === 'AbortError') {
+            alert("La descarga tardó más de 90 minutos. Intenta de nuevo.");
+        } else {
+            alert("Error al descargar los archivos: " + err.message);
+        }
     }
 }
 
-// Descarga de playlist
+// Descarga de playlist (TIMEOUT: 90 minutos)
 async function downloadPlaylist() {
     const url = document.getElementById('playlist-url').value;
     const file = document.getElementById('excel-file').files[0];
@@ -369,21 +377,23 @@ async function downloadPlaylist() {
     if (file) {
         formData.append("file", file);
         showProgress('Procesando Excel... esto puede tardar varios minutos');
+        console.log("Descargando desde archivo Excel:", file.name);
     } else {
         formData.append("url", url);
+        console.log("Descargando playlist desde URL:", url);
     }
     formData.append("format_type", audioOnly ? "mp3" : "mp4");
 
-    const endpoint = file ? "http://127.0.0.1:8000/download_batch/" : "http://127.0.0.1:8000/download_playlist/";
+    const endpoint = file ? "/download_batch/" : "/download_playlist/";
 
     try {
         updateProgress(20);
         
-        // Sin timeout para permitir procesos largos
-        const response = await fetch(endpoint, {
+        // 90 minutos para playlist o Excel
+        const response = await fetchWithTimeout(endpoint, {
             method: "POST",
             body: formData
-        });
+        }, 90 * 60 * 1000);
 
         updateProgress(60);
 
@@ -409,8 +419,13 @@ async function downloadPlaylist() {
         }, 500);
 
     } catch (err) {
-        console.error('Error completo:', err);
+        console.error('Error en descarga de playlist:', err);
         hideProgress();
-        alert("Error al descargar la playlist: " + err.message);
+        
+        if (err.name === 'AbortError') {
+            alert("La descarga tardó más de 90 minutos. Intenta de nuevo.");
+        } else {
+            alert("Error al descargar la playlist: " + err.message);
+        }
     }
 }

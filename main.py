@@ -12,11 +12,12 @@ import openpyxl
 import pandas as pd
 import csv
 from fastapi.staticfiles import StaticFiles
-
 import subprocess
 import sys
-
+import time
+import glob
 from starlette.background import BackgroundTask
+import pandas as pd
 
 def cleanup_file(path):
     try:
@@ -25,16 +26,41 @@ def cleanup_file(path):
     except Exception:
         pass
 
+# ============================================================
+# 🛠️ LIMPIAR ARCHIVOS ANTIGUOS AL INICIAR
+# ============================================================
+def cleanup_old_files():
+    """Limpia archivos de descargas anteriores"""
+    try:
+        old_folders = glob.glob("downloads/*")
+        for folder in old_folders:
+            try:
+                if os.path.isdir(folder):
+                    shutil.rmtree(folder)
+                elif os.path.isfile(folder):
+                    os.remove(folder)
+            except Exception as e:
+                print(f"⚠️ No se pudo limpiar {folder}: {e}")
+        print("✅ Carpeta de descargas limpiada")
+    except Exception as e:
+        print(f"⚠️ Error en limpieza inicial: {e}")
+
+# Ejecutar limpieza al iniciar
+cleanup_old_files()
+
 # Configurar FFmpeg
-os.environ['PATH'] = r'C:\Users\ariza\Documents\GitHub\Rockola' + os.pathsep + os.environ['PATH']
-os.environ['FFMPEG_BINARY'] = r'C:\Users\ariza\Documents\GitHub\Rockola\ffmpeg.exe'
+ffmpeg_dir = os.path.dirname(os.path.abspath(__file__))
+os.environ['PATH'] = ffmpeg_dir + os.pathsep + os.environ['PATH']
+os.environ['FFMPEG_BINARY'] = os.path.join(ffmpeg_dir, 'ffmpeg.exe')
+
+# Verificar que FFmpeg existe
+if not os.path.exists(os.path.join(ffmpeg_dir, 'ffmpeg.exe')):
+    print("⚠️ ADVERTENCIA: ffmpeg.exe no encontrado en la carpeta raíz")
 
 ydl_opts = {
-    'proxy': 'http://usuario:contraseña@tu_ip_publica:puerto',
     'quiet': True,
     'no_warnings': True,
     'ignoreerrors': True,
-    # 'cookiefile': COOKIES_FILE,
     'extractor_args': {'youtubetab': ['skip=authcheck']},
     'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
     'http_headers': {
@@ -126,7 +152,7 @@ def process_excel_file(file_content: bytes) -> list:
                 artist_name = str(artist_name).strip() if artist_name else ""
                 query = f"{track_name} {artist_name}".strip()
                 songs.append(query)
-                print(f"📝 Extraído: {query}")
+                print(f"🎵 Extraído: {query}")
 
         print(f"\n✅ Total de canciones extraídas: {len(songs)}")
         return songs
@@ -190,16 +216,16 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
     os.makedirs(output_folder, exist_ok=True)
     filename = str(uuid.uuid4())
 
-    ydl_opts = {
+    ydl_opts_download = {
         'quiet': True,
         'no_warnings': True,
     }
 
     if USE_COOKIES:
-        ydl_opts['cookiefile'] = COOKIES_PATH
+        ydl_opts_download['cookiefile'] = COOKIES_PATH
 
     if format_type == "mp3":
-        ydl_opts.update({
+        ydl_opts_download.update({
             'format': 'bestaudio/best',
             'outtmpl': f'{output_folder}/{filename}.%(ext)s',
             'postprocessors': [{
@@ -209,55 +235,40 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
             }],
         })
     else:
-        ydl_opts.update({
+        ydl_opts_download.update({
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             'outtmpl': f'{output_folder}/{filename}.%(ext)s',
             'merge_output_format': 'mp4',
         })
 
     try:
-        with YoutubeDL(ydl_opts) as ydl:
+        with YoutubeDL(ydl_opts_download) as ydl:
             ydl.download([url])
 
-        # for file in os.listdir(output_folder):
-        #     if file.startswith(filename):
-        #         file_path = os.path.join(output_folder, file)
-                
-        #         # Renombrar si tiene extensión incorrecta (ej: .mp3_ a .mp3)
-        #         if file.endswith('_'):
-        #             new_file = file[:-1]
-        #             new_file_path = os.path.join(output_folder, new_file)
-        #             os.rename(file_path, new_file_path)
-        #             file_path = new_file_path
-        #             file = new_file
-
-        import time
-
+        # Buscar el archivo descargado
         for file in os.listdir(output_folder):
             if file.startswith(filename):
                 file_path = os.path.join(output_folder, file)
                 
-                # Esperar si todavía termina de escribirse
+                # Esperar si todavía tiene guion bajo (ffmpeg lo agrega mientras procesa)
+                timeout = 30
+                start_time = time.time()
                 while file.endswith('_') and os.path.exists(file_path):
+                    if time.time() - start_time > timeout:
+                        print(f"⚠️ Timeout esperando finalización de {file}")
+                        break
                     time.sleep(0.1)
-                    file = os.listdir(output_folder)[0]
-                    file_path = os.path.join(output_folder, file)
                 
                 # Renombrar si queda con guion bajo
-                if file.endswith('_'):
+                if file.endswith('_') and os.path.exists(file_path):
                     new_file = file[:-1]
                     new_file_path = os.path.join(output_folder, new_file)
-                    os.rename(file_path, new_file_path)
-                    file_path = new_file_path
-                    file = new_file
-
-
-                def cleanup():
                     try:
-                        if os.path.exists(file_path):
-                            os.remove(file_path)
-                    except Exception:
-                        pass
+                        os.rename(file_path, new_file_path)
+                        file_path = new_file_path
+                        file = new_file
+                    except Exception as e:
+                        print(f"⚠️ Error al renombrar archivo: {e}")
 
                 return FileResponse(
                     path=file_path,
@@ -266,17 +277,16 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
                     background=BackgroundTask(cleanup_file, file_path)
                 )
 
-
         return {"error": "No se pudo encontrar el archivo descargado"}
 
     except Exception as e:
         error_msg = str(e)
         if "HTTP Error 403" in error_msg:
-            error_msg = "Error 403: El video podría tener restricciones de región o edad"
+            error_msg = "Error 403: El vídeo podría tener restricciones de región o edad"
         elif "Video unavailable" in error_msg:
-            error_msg = "Video no disponible o URL inválida"
+            error_msg = "Vídeo no disponible o URL inválida"
         elif "No video formats found" in error_msg:
-            error_msg = "No se encontraron formatos disponibles para este video"
+            error_msg = "No se encontraron formatos disponibles para este vídeo"
 
         return {"error": error_msg}
 
@@ -305,7 +315,7 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
     batch_folder = os.path.join(output_folder, batch_id)
     os.makedirs(batch_folder, exist_ok=True)
 
-    ydl_opts = {
+    ydl_opts_batch = {
         'quiet': True,
         'no_warnings': True,
         'ignoreerrors': True,
@@ -313,10 +323,10 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
     }
 
     if USE_COOKIES:
-        ydl_opts['cookiefile'] = COOKIES_PATH
+        ydl_opts_batch['cookiefile'] = COOKIES_PATH
 
     if format_type == "mp3":
-        ydl_opts.update({
+        ydl_opts_batch.update({
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -325,7 +335,7 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
             }],
         })
     else:
-        ydl_opts.update({
+        ydl_opts_batch.update({
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             'merge_output_format': 'mp4',
         })
@@ -342,7 +352,7 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
 
             if is_url(line):
                 try:
-                    with YoutubeDL(ydl_opts) as ydl:
+                    with YoutubeDL(ydl_opts_batch) as ydl:
                         ydl.download([line])
                     successful_downloads += 1
                     print(f"✅ Descargado desde URL")
@@ -350,7 +360,7 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
                     print(f"❌ Error con URL: {str(e)}")
                     failed_downloads.append(line)
             else:
-                if search_and_download(line, ydl_opts):
+                if search_and_download(line, ydl_opts_batch):
                     successful_downloads += 1
                 else:
                     failed_downloads.append(line)
@@ -366,20 +376,13 @@ async def download_batch(file: UploadFile = File(...), format_type: str = Form("
         shutil.make_archive(zip_path, 'zip', batch_folder)
         shutil.rmtree(batch_folder)
 
-        def cleanup():
-            try:
-                if os.path.exists(f"{zip_path}.zip"):
-                    os.remove(f"{zip_path}.zip")
-            except Exception:
-                pass
-
         print(f"\n📦 Completado: {successful_downloads} exitosas, {len(failed_downloads)} fallidas")
 
         return FileResponse(
             path=f"{zip_path}.zip",
             filename="batch_download.zip",
             media_type="application/zip",
-            background=cleanup
+            background=BackgroundTask(cleanup_file, f"{zip_path}.zip")
         )
     except Exception as e:
         if os.path.exists(batch_folder):
@@ -399,17 +402,17 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
     playlist_folder = os.path.join(output_folder, playlist_id)
     os.makedirs(playlist_folder, exist_ok=True)
 
-    ydl_opts = {
+    ydl_opts_playlist = {
         'quiet': True,
         'no_warnings': True,
         'ignoreerrors': True,
     }
 
     if USE_COOKIES:
-        ydl_opts['cookiefile'] = COOKIES_PATH
+        ydl_opts_playlist['cookiefile'] = COOKIES_PATH
 
     if format_type == "mp3":
-        ydl_opts.update({
+        ydl_opts_playlist.update({
             'format': 'bestaudio/best',
             'outtmpl': f'{playlist_folder}/%(playlist_index)s - %(title)s.%(ext)s',
             'postprocessors': [{
@@ -419,7 +422,7 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
             }],
         })
     else:
-        ydl_opts.update({
+        ydl_opts_playlist.update({
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             'outtmpl': f'{playlist_folder}/%(playlist_index)s - %(title)s.%(ext)s',
             'merge_output_format': 'mp4',
@@ -427,29 +430,24 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
 
     zip_path = None
     try:
-        with YoutubeDL(ydl_opts) as ydl:
+        with YoutubeDL(ydl_opts_playlist) as ydl:
             ydl.download([url])
 
         if not os.listdir(playlist_folder):
             shutil.rmtree(playlist_folder)
-            return {"error": "No se pudo descargar ningún video de la playlist"}
+            return {"error": "No se pudo descargar ningún vídeo de la playlist"}
 
         zip_path = f"{output_folder}/{playlist_id}"
         shutil.make_archive(zip_path, 'zip', playlist_folder)
         shutil.rmtree(playlist_folder)
 
-        def cleanup():
-            try:
-                if os.path.exists(f"{zip_path}.zip"):
-                    os.remove(f"{zip_path}.zip")
-            except Exception:
-                pass
+        print(f"📦 Playlist descargada exitosamente")
 
         return FileResponse(
             path=f"{zip_path}.zip",
             filename="playlist_download.zip",
             media_type="application/zip",
-            background=cleanup
+            background=BackgroundTask(cleanup_file, f"{zip_path}.zip")
         )
     except Exception as e:
         if os.path.exists(playlist_folder):
