@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+ydl_opts_download = {
+        'quiet': False,  # Cambiar a False para ver los logs
+        'no_warnings': False,
+    }#!/usr/bin/env python3
 from fastapi import FastAPI, Form, File, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -229,7 +232,7 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
     if format_type == "mp3":
         ydl_opts_download.update({
             'format': 'bestaudio/best',
-            'outtmpl': f'{output_folder}/{filename}.%(ext)s',
+            'outtmpl': os.path.join(output_folder, f'{filename}.%(ext)s'),
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
@@ -239,41 +242,59 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
     else:
         ydl_opts_download.update({
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            'outtmpl': f'{output_folder}/{filename}.%(ext)s',
+            'outtmpl': os.path.join(output_folder, f'{filename}.%(ext)s'),
             'merge_output_format': 'mp4',
         })
 
     try:
+        print(f"🎵 Descargando: {url}")
+        
         with YoutubeDL(ydl_opts_download) as ydl:
-            ydl.download([url])
-
+            info = ydl.extract_info(url, download=True)
+            video_title = info.get('title', 'video')
+        
         # Esperar a que FFmpeg termine de procesar
-        timeout = 120  # 2 minutos máximo
+        timeout = 300  # 5 minutos
         start_time = time.time()
         file_found = None
         
+        print(f"⏳ Esperando procesamiento...")
+        
         while time.time() - start_time < timeout:
-            files_in_folder = os.listdir(output_folder)
-            
-            # Buscar archivos que coincidan con el UUID y NO terminen en _
-            for file in files_in_folder:
-                if file.startswith(filename) and not file.endswith('_'):
-                    file_found = file
+            try:
+                files_in_folder = os.listdir(output_folder)
+                
+                # Buscar archivos que coincidan con el UUID y NO terminen en _
+                for file in files_in_folder:
+                    if file.startswith(filename) and not file.endswith('_'):
+                        file_found = file
+                        print(f"✅ Archivo listo: {file}")
+                        break
+                
+                if file_found:
                     break
-            
-            if file_found:
-                break
-            
-            time.sleep(0.5)
+                
+                time.sleep(0.5)
+                
+            except Exception as e:
+                print(f"⚠️ Error: {e}")
+                time.sleep(1)
         
         if not file_found:
-            print(f"❌ No se encontró archivo después de {timeout} segundos")
-            print(f"Archivos en la carpeta: {os.listdir(output_folder)}")
-            return {"error": "Timeout: No se pudo completar la conversión del archivo"}
+            print(f"❌ Timeout - archivos en carpeta: {os.listdir(output_folder)}")
+            return {"error": "No se pudo completar la conversión"}
         
         file_path = os.path.join(output_folder, file_found)
         
-        print(f"✅ Archivo encontrado: {file_found}")
+        # Dar un pequeño delay antes de enviar el archivo
+        time.sleep(1)
+        
+        # Verificar que el archivo exista y sea accesible
+        if not os.path.exists(file_path):
+            return {"error": "El archivo no pudo ser accedido"}
+        
+        file_size = os.path.getsize(file_path)
+        print(f"📤 Enviando {file_found} ({file_size} bytes)")
         
         return FileResponse(
             path=file_path,
@@ -284,12 +305,14 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
 
     except Exception as e:
         error_msg = str(e)
+        print(f"❌ Error: {error_msg}")
+        
         if "HTTP Error 403" in error_msg:
-            error_msg = "Error 403: El vídeo podría tener restricciones de región o edad"
+            error_msg = "Error 403: El vídeo podría tener restricciones"
         elif "Video unavailable" in error_msg:
-            error_msg = "Vídeo no disponible o URL inválida"
+            error_msg = "Vídeo no disponible"
         elif "No video formats found" in error_msg:
-            error_msg = "No se encontraron formatos disponibles para este vídeo"
+            error_msg = "No hay formatos disponibles"
 
         return {"error": error_msg}
 
@@ -450,7 +473,7 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
             path=f"{zip_path}.zip",
             filename="playlist_download.zip",
             media_type="application/zip",
-            background=BackgroundTask(cleanup_file, f"{zip_path}.zip")
+            background=BackgroundTask(cleanup_file, f"{zip_path}.zip", delay=10)
         )
     except Exception as e:
         if os.path.exists(playlist_folder):
