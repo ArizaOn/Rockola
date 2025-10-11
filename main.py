@@ -219,8 +219,11 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
     """Descarga individual desde URL"""
     output_folder = "downloads"
     os.makedirs(output_folder, exist_ok=True)
-    filename = str(uuid.uuid4())
-
+    
+    # Nombre fijo para cada descarga
+    unique_id = str(uuid.uuid4())
+    output_filename = f"download_{unique_id}"
+    
     ydl_opts_download = {
         'quiet': True,
         'no_warnings': True,
@@ -232,7 +235,7 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
     if format_type == "mp3":
         ydl_opts_download.update({
             'format': 'bestaudio/best',
-            'outtmpl': os.path.join(output_folder, f'{filename}.%(ext)s'),
+            'outtmpl': os.path.join(output_folder, output_filename),
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
@@ -242,63 +245,61 @@ def download(url: str = Form(...), format_type: str = Form("mp3")):
     else:
         ydl_opts_download.update({
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            'outtmpl': os.path.join(output_folder, f'{filename}.%(ext)s'),
+            'outtmpl': os.path.join(output_folder, output_filename),
             'merge_output_format': 'mp4',
         })
 
     try:
         print(f"🎵 Descargando: {url}")
+        print(f"📁 Archivo será guardado como: {output_filename}")
         
         with YoutubeDL(ydl_opts_download) as ydl:
             info = ydl.extract_info(url, download=True)
             video_title = info.get('title', 'video')
         
-        # Esperar a que FFmpeg termine de procesar
+        print(f"✅ Descarga completada: {video_title}")
+        
+        # Esperar a que FFmpeg termine
         timeout = 300  # 5 minutos
         start_time = time.time()
-        file_found = None
+        file_path = None
         
-        print(f"⏳ Esperando procesamiento...")
+        print(f"⏳ Esperando conversión a MP3...")
         
         while time.time() - start_time < timeout:
             try:
-                files_in_folder = os.listdir(output_folder)
-                
-                # Buscar archivos que coincidan con el UUID y NO terminen en _
-                for file in files_in_folder:
-                    if file.startswith(filename) and not file.endswith('_'):
-                        file_found = file
-                        print(f"✅ Archivo listo: {file}")
+                # Buscar el archivo con la extensión correcta
+                if format_type == "mp3":
+                    test_path = os.path.join(output_folder, f"{output_filename}.mp3")
+                    if os.path.exists(test_path) and os.path.getsize(test_path) > 0:
+                        file_path = test_path
                         break
-                
-                if file_found:
-                    break
+                else:
+                    test_path = os.path.join(output_folder, f"{output_filename}.mp4")
+                    if os.path.exists(test_path) and os.path.getsize(test_path) > 0:
+                        file_path = test_path
+                        break
                 
                 time.sleep(0.5)
                 
             except Exception as e:
-                print(f"⚠️ Error: {e}")
+                print(f"⚠️ Error buscando archivo: {e}")
                 time.sleep(1)
         
-        if not file_found:
-            print(f"❌ Timeout - archivos en carpeta: {os.listdir(output_folder)}")
+        if not file_path or not os.path.exists(file_path):
+            print(f"❌ Timeout - No se encontró: {output_filename}.{format_type}")
+            print(f"Archivos en carpeta: {os.listdir(output_folder)}")
             return {"error": "No se pudo completar la conversión"}
         
-        file_path = os.path.join(output_folder, file_found)
-        
-        # Dar un pequeño delay antes de enviar el archivo
+        # Dar delay para asegurar que el archivo está completamente escrito
         time.sleep(1)
         
-        # Verificar que el archivo exista y sea accesible
-        if not os.path.exists(file_path):
-            return {"error": "El archivo no pudo ser accedido"}
-        
         file_size = os.path.getsize(file_path)
-        print(f"📤 Enviando {file_found} ({file_size} bytes)")
+        print(f"📤 Archivo listo ({file_size} bytes): {os.path.basename(file_path)}")
         
         return FileResponse(
             path=file_path,
-            filename=file_found,
+            filename=os.path.basename(file_path),
             media_type="application/octet-stream",
             background=BackgroundTask(cleanup_file, file_path, delay=10)
         )
