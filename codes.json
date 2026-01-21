@@ -1,0 +1,46 @@
+{
+  "codes": [
+    {
+      "code": "debloyan",
+      "created_at": "2025-12-11T15:36:26.561859",
+      "expires_at": null,
+      "is_admin": true,
+      "used_count": 53
+    },
+    {
+      "code": "estrella de taco",
+      "created_at": "2025-12-14T23:03:51.480560",
+      "expires_at": "2026-01-13T23:03:51.480591",
+      "is_admin": false,
+      "used_count": 0
+    },
+    {
+      "code": "árbol fuego",
+      "created_at": "2025-12-16T17:27:31.186513",
+      "expires_at": "2026-01-15T17:27:31.186536",
+      "is_admin": false,
+      "used_count": 5
+    },
+    {
+      "code": "taco pizza",
+      "created_at": "2025-12-19T09:01:40.935504",
+      "expires_at": "2026-01-18T09:01:40.935550",
+      "is_admin": false,
+      "used_count": 0
+    },
+    {
+      "code": "fenix",
+      "created_at": "2025-12-26T13:28:41.471760",
+      "expires_at": "2026-01-25T13:28:41.471796",
+      "is_admin": false,
+      "used_count": 1
+    },
+    {
+      "code": "pau",
+      "created_at": "2026-01-14T10:03:50.384045",
+      "expires_at": "2026-02-13T10:03:50.384218",
+      "is_admin": false,
+      "used_count": 0
+    }
+  ]
+}
