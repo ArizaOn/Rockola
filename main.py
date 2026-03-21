@@ -15,6 +15,9 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 
+from metadata_service import MetadataService
+metadata_service = MetadataService()
+
 # ============== IMPORTAR SISTEMA DE AUTH ==============
 from auth_system import auth
 # ======================================================
@@ -76,7 +79,7 @@ if not IS_WINDOWS:
 
 COOKIES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
 # DESACTIVAR cookies temporalmente para probar
-USE_COOKIES = False  # Cambiado a False para probar sin cookies
+USE_COOKIES = False  # Cambiado a  False para probar sin cookies
 # USE_COOKIES = os.path.exists(COOKIES_PATH) and os.path.getsize(COOKIES_PATH) > 100
 
 # Configuración de proxy - PUEDES ACTIVAR ESTO SI CONSIGUES UN PROXY
@@ -329,12 +332,22 @@ def run_batch_task(task_id: str, lines: list, format_type: str, batch_folder: st
                     files_after = set(os.listdir(batch_folder))
                     new_files = files_after - files_before
                     
-                    if new_files:
-                        successful_downloads += 1
-                        print(f"✅ URL descargada exitosamente")
-                    else:
-                        failed.append(line)
-                        print(f"⚠️ No se detectaron archivos nuevos para URL")
+                if new_files:
+                    successful_downloads += 1
+                    
+                    # ========== APLICAR METADATOS ==========
+                    if format_type == "mp3":
+                        for new_file in new_files:
+                            if new_file.endswith('.mp3'):
+                                try:
+                                    file_path = os.path.join(batch_folder, new_file)
+                                    info = metadata_service.extract_info_from_filename(line)
+                                    metadata = metadata_service.search_metadata(info['title'], info['artist'])
+                                    if metadata:
+                                        metadata_service.apply_metadata_to_mp3(file_path, metadata)
+                                except:
+                                    pass
+                    # ========================================
                 else:
                     print(f"🔎 Procesando búsqueda: {line}")
                     
@@ -511,16 +524,30 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
         print(f"🔖 Filename base: {filename}")
         print(f"{'='*60}\n")
         
-        # Intentar descargar
+
+        video_info = None  # ← AGREGAR ESTO
         with YoutubeDL(ydl_opts_download) as ydl:
             info = ydl.extract_info(url, download=True)
             
             if not info:
-                raise HTTPException(
-                    status_code=500, 
-                    detail="No se pudo extraer información del video. Verifica que la URL sea válida."
-                )
-        
+                raise HTTPException(...)
+            
+            # ← AGREGAR ESTAS LÍNEAS
+            video_info = {
+                'title': info.get('title', ''),
+                'uploader': info.get('uploader', ''),
+            }
+
+        # # Intentar descargar
+        # with YoutubeDL(ydl_opts_download) as ydl:
+        #     info = ydl.extract_info(url, download=True)
+            
+        #     if not info:
+        #         raise HTTPException(
+        #             status_code=500, 
+        #             detail="No se pudo extraer información del video. Verifica que la URL sea válida."
+        #         )
+   
         # Buscar archivo descargado
         print(f"\n🔍 Buscando archivos con prefijo: {filename}")
         downloaded_file = None
@@ -559,6 +586,25 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
         
         print(f"✅ Descarga exitosa: {simple_filename}\n")
         
+
+        # ========== APLICAR METADATOS ==========
+        if format_type == "mp3" and downloaded_file.endswith('.mp3'):
+            try:
+                title = video_info.get('title', '') if video_info else ''
+                info_extracted = metadata_service.extract_info_from_filename(title)
+                
+                metadata = metadata_service.search_metadata(
+                    info_extracted['title'], 
+                    info_extracted['artist']
+                )
+                
+                if metadata:
+                    metadata_service.apply_metadata_to_mp3(downloaded_file, metadata)
+                    print(f"🎉 Metadatos aplicados")
+            except Exception as e:
+                print(f"⚠️ Error metadatos: {e}")
+        # ========================================
+
         # Programar limpieza
         threading.Thread(target=delayed_cleanup, args=(downloaded_file, 60), daemon=True).start()
         
@@ -707,6 +753,9 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
         if os.path.exists(playlist_folder):
             shutil.rmtree(playlist_folder)
         raise HTTPException(status_code=500, detail=str(e))
+
+from tarjetas.app import flashscan_app
+app.mount("/tarjetas", flashscan_app)
 
 if __name__ == "__main__":
     import uvicorn
