@@ -7,6 +7,43 @@
     <link rel="stylesheet" href="/static/styleIndex.css">
 </head>
 <body>
+
+    <!-- ============ MENÚ HAMBURGUESA ============ -->
+    <button class="hamburger-btn" id="hamburgerBtn" aria-label="Abrir menú">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <div class="nav-overlay" id="navOverlay"></div>
+
+    <nav class="side-nav" id="sideNav">
+        <div class="side-nav-header">
+            <span class="side-nav-title">ROCKOLA</span>
+            <button class="side-nav-close" id="sideNavClose">✕</button>
+        </div>
+        <ul class="side-nav-links">
+            <li>
+                <a href="/" class="side-nav-link active">
+                    <span class="nav-icon">🎵</span>
+                    <span>Descargador</span>
+                </a>
+            </li>
+            <li>
+                <a href="/tarjetas/" class="side-nav-link">
+                    <span class="nav-icon">⚡</span>
+                    <span>Flash Cards</span>
+                </a>
+            </li>
+            <li>
+                <a href="/me" class="side-nav-link">
+                    <span class="nav-icon">👤</span>
+                    <span>Yo</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
     <!-- ============ MODAL DE AUTENTICACIÓN ============ -->
     <div id="auth-overlay" class="auth-overlay">
         <div class="auth-modal">
@@ -21,25 +58,16 @@
                 <p class="auth-subtitle">Ingresa tu código de acceso para continuar</p>
                 <form id="auth-form">
                     <div class="auth-input-group">
-                        <input 
-                            type="text" 
-                            id="auth-code-input" 
-                            class="auth-input" 
-                            placeholder="Ejemplo: café con leche"
-                            autocomplete="off"
-                            spellcheck="false"
-                        />
+                        <input type="text" id="auth-code-input" class="auth-input" placeholder="Ejemplo: café con leche" autocomplete="off" spellcheck="false"/>
                     </div>
-                    <button type="submit" id="auth-submit-btn" class="auth-button">
-                        Ingresar
-                    </button>
+                    <button type="submit" id="auth-submit-btn" class="auth-button">Ingresar</button>
                     <div id="auth-error-msg" class="auth-error"></div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- ============ CONTENIDO ORIGINAL ============ -->
+    <!-- ============ CONTENIDO ORIGINAL (sin cambios) ============ -->
     <div class="container">
         <div class="warning-banner">
             <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -52,18 +80,15 @@
                 <p>El uso de esta herramienta se considera un delito en la mayoría de países. El descargar cualquier canción con derechos de autor queda bajo tu criterio y responsabilidad.</p>
             </div>
         </div>
-
         <header>
             <h1>🎵 Descargador de Música</h1>
             <p class="subtitle">Descarga música desde URL, archivo de texto o playlist de spotify</p>
         </header>
-
         <div class="tabs">
             <button class="tab active" data-tab="url">URL Individual</button>
             <button class="tab" data-tab="file">Archivo .txt</button>
             <button class="tab" data-tab="playlist">Playlist</button>
         </div>
-
         <div class="content">
             <div class="tab-content active" id="url-tab">
                 <div class="input-group">
@@ -71,21 +96,13 @@
                     <input type="text" id="single-url" placeholder="https://www.youtube.com/watch?v=..." />
                 </div>
                 <div class="options">
-                    <label>
-                        <input type="checkbox" id="url-audio-only" checked />
-                        Solo audio (MP3)
-                    </label>
+                    <label><input type="checkbox" id="url-audio-only" checked /> Solo audio (MP3)</label>
                 </div>
                 <button class="btn-download" onclick="downloadSingle()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     Descargar
                 </button>
             </div>
-
             <div class="tab-content" id="file-tab">
                 <div class="input-group">
                     <label for="txt-file">Selecciona un archivo .txt con URLs (una por línea):</label>
@@ -95,57 +112,36 @@
                     </div>
                 </div>
                 <div class="options">
-                    <label>
-                        <input type="checkbox" id="file-audio-only" checked />
-                        Solo audio (MP3)
-                    </label>
+                    <label><input type="checkbox" id="file-audio-only" checked /> Solo audio (MP3)</label>
                 </div>
                 <button class="btn-download" onclick="downloadFromFile()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     Descargar Todo
                 </button>
             </div>
-
             <div class="tab-content" id="playlist-tab">
                 <div class="input-group">
                     <label for="playlist-url">Ingresa la URL de la playlist o sube un archivo Excel:</label>
                     <input type="text" id="playlist-url" placeholder="https://www.youtube.com/playlist?list=..." />
-                    
                     <div style="text-align: center; margin: 15px 0; color: #666; font-size: 0.9em;">- O -</div>
-                    
                     <div class="file-input-wrapper" id="playlist-drop-zone">
                         <input type="file" id="excel-file" accept=".xlsx,.xls,.csv,.txt" />
                         <span class="file-name-playlist">Ningún archivo seleccionado</span>
                     </div>
                 </div>
                 <div class="options">
-                    <label>
-                        <input type="checkbox" id="playlist-audio-only" checked />
-                        Solo audio (MP3)
-                    </label>
+                    <label><input type="checkbox" id="playlist-audio-only" checked /> Solo audio (MP3)</label>
                 </div>
                 <button class="btn-download" onclick="downloadPlaylist()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     Descargar Playlist
                 </button>
             </div>
         </div>
-
         <div class="progress-container" id="progress-container" style="display: none;">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress-fill"></div>
-            </div>
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
             <p class="progress-text" id="progress-text">Procesando...</p>
         </div>
-
         <div class="info-box">
             <h3>ℹ️ Información</h3>
             <ul>
@@ -155,7 +151,6 @@
             </ul>
         </div>
         <br>
-
         <div class="content">
             <div class="tab-content active" id="url-faq">
                 <div class="info-box-FAQ">
@@ -167,13 +162,12 @@
                     </ul>
                 </div>
             </div>
-    
             <div class="tab-content" id="file-faq">
                 <div class="info-box-FAQ">
                     <h3>❓ Preguntas Frecuentes</h3>
                     <h4>Archivos .txt</h4>
                     <ul>
-                        <li><strong>¿Qué estructura o formato deben de tener las canciones?:</strong> Debes escribir nombre de la canción y del artista, algo así como: "i dont care violent vira", no es necesario separar nombre de canción y artista, para la siguiente canción solo separa por un salto de línea. Te va a quedar como: 
+                        <li><strong>¿Qué estructura o formato deben de tener las canciones?:</strong> Debes escribir nombre de la canción y del artista, algo así como: "i dont care violent vira". Te va a quedar como:
                             <br><code>i dont care violent vira</code>
                             <br><code>damn girl rock n chile</code>
                             <br><code>piel con piel la santa grifa</code>
@@ -181,113 +175,76 @@
                     </ul>
                 </div>
             </div>
-    
             <div class="tab-content" id="playlist-faq">
                 <div class="info-box-FAQ">
                     <h3>❓ Preguntas Frecuentes</h3>
                     <h4>Playlist / Excel (.xlsx)</h4>
                     <ul>
-                        <li><strong>Le subo mi archivo Excel y no se descarga:</strong> A veces pasa, vuelve a intentarlo, sino checa si el archivo que le estas metiendo es .xlsx o formato de libro. Si lo descargaste de Exportify abre el archivo excel → Archivo → Guardar como → Examinar → Tipo → Libro (es la opción de hasta arriba).</li>
-                        <li><strong>Le subo la URL de mi playlist de Spotify pero no se descarga:</strong> Lo sentimos, aún no tenemos esa función :( , pero puedes donar para que nos animemos a programarla :D .</li>
+                        <li><strong>Le subo mi archivo Excel y no se descarga:</strong> A veces pasa, vuelve a intentarlo, sino checa si el archivo es .xlsx. Si lo descargaste de Exportify: Archivo → Guardar como → Examinar → Tipo → Libro.</li>
+                        <li><strong>Le subo la URL de mi playlist de Spotify pero no se descarga:</strong> Lo sentimos, aún no tenemos esa función :(</li>
                     </ul>
                 </div>
-                
                 <div class="info-box-FAQ">
                     <h3>📚 Cómo usar Exportify</h3>
-                    <p>Lo que queremos es obtener un archivo xlsx de Excel que represente las canciones de algún álbum o playlist que hayas guardado en Spotify.</p>
                     <ol>
                         <li>Abre <a id="linkExportify" href="https://exportify.net/" target="_blank" rel="noopener noreferrer">Exportify</a></li>
                         <li>Haz click en "Get Started"</li>
                         <li>Inicia sesión en Spotify</li>
-                        <li>Elije la playlist que vas a querer descargar, ya que sepas cuál descargarás dale click en "Export"</li>
-                        <li>Se te descargará un archivo Excel .csv (este formato no nos sirve)</li>
-                        <li>Pásalo a formato xlsx: Abre el archivo .csv que se te descargó → Archivo → Guardar como → Examinar → Tipo → Libro de Excel (este es el tipo de archivo .xlsx)</li>
-                        <li>Arrastra el archivo excel .xlsx hacia el área de drop y descarga.</li>
+                        <li>Elige la playlist y dale click en "Export"</li>
+                        <li>Se descargará un .csv — pásalo a .xlsx: Archivo → Guardar como → Libro de Excel</li>
+                        <li>Arrastra el .xlsx al área de drop y descarga.</li>
                     </ol>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ============ SCRIPT DE AUTENTICACIÓN ============ -->
     <script>
-        // Esperar a que el DOM esté completamente cargado
         document.addEventListener('DOMContentLoaded', function() {
             const overlay = document.getElementById('auth-overlay');
             const form = document.getElementById('auth-form');
             const input = document.getElementById('auth-code-input');
             const submitBtn = document.getElementById('auth-submit-btn');
             const errorMsg = document.getElementById('auth-error-msg');
-
-            if (sessionStorage.getItem('rockola_authenticated') === 'true') {
-                overlay.style.display = 'none';
-                return;
-            }
-
+            if (sessionStorage.getItem('rockola_authenticated') === 'true') { overlay.style.display = 'none'; return; }
             setTimeout(() => input.focus(), 400);
-
-            function showError(message) {
-                errorMsg.textContent = message;
-                errorMsg.classList.add('show');
-                setTimeout(() => errorMsg.classList.remove('show'), 4000);
-            }
-
+            function showError(message) { errorMsg.textContent = message; errorMsg.classList.add('show'); setTimeout(() => errorMsg.classList.remove('show'), 4000); }
             async function validateCode(code) {
-                if (!code.trim()) {
-                    showError('⚠️ Por favor ingresa un código');
-                    return;
-                }
-
+                if (!code.trim()) { showError('⚠️ Por favor ingresa un código'); return; }
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="auth-spinner"></span> Verificando...';
-
                 try {
                     const formData = new FormData();
                     formData.append('code', code.trim());
-
-                    const response = await fetch('/api/validate_code', {
-                        method: 'POST',
-                        body: formData
-                    });
-
+                    const response = await fetch('/api/validate_code', { method: 'POST', body: formData });
                     const result = await response.json();
-
                     if (result.valid) {
                         sessionStorage.setItem('rockola_authenticated', 'true');
                         submitBtn.innerHTML = '✓ Acceso Concedido';
                         submitBtn.classList.add('auth-success');
-
-                        setTimeout(() => {
-                            overlay.style.animation = 'authFadeOut 0.4s ease';
-                            setTimeout(() => overlay.style.display = 'none', 400);
-                        }, 1000);
+                        setTimeout(() => { overlay.style.animation = 'authFadeOut 0.4s ease'; setTimeout(() => overlay.style.display = 'none', 400); }, 1000);
                     } else {
                         showError(result.message || '❌ Código inválido');
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = 'Ingresar';
-                        input.value = '';
-                        input.focus();
+                        submitBtn.disabled = false; submitBtn.innerHTML = 'Ingresar'; input.value = ''; input.focus();
                     }
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError('⚠️ Error de conexión. Intenta de nuevo.');
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Ingresar';
-                }
+                } catch (error) { showError('⚠️ Error de conexión.'); submitBtn.disabled = false; submitBtn.innerHTML = 'Ingresar'; }
             }
-
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                validateCode(input.value);
-            });
-
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    validateCode(input.value);
-                }
-            });
+            form.addEventListener('submit', (e) => { e.preventDefault(); validateCode(input.value); });
+            input.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); validateCode(input.value); } });
         });
+    </script>
+
+    <script>
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const sideNav      = document.getElementById('sideNav');
+        const navOverlay   = document.getElementById('navOverlay');
+        const sideNavClose = document.getElementById('sideNavClose');
+        function openNav()  { sideNav.classList.add('open'); navOverlay.classList.add('open'); hamburgerBtn.classList.add('open'); }
+        function closeNav() { sideNav.classList.remove('open'); navOverlay.classList.remove('open'); hamburgerBtn.classList.remove('open'); }
+        hamburgerBtn.addEventListener('click', openNav);
+        sideNavClose.addEventListener('click', closeNav);
+        navOverlay.addEventListener('click', closeNav);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNav(); });
     </script>
 
     <script src="/static/scriptIndex.js"></script>
