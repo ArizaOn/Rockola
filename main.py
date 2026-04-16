@@ -29,6 +29,9 @@ DOWNLOADS_DIR.mkdir(exist_ok=True)
 TASKS: Dict[str, Dict[str, Any]] = {}
 TASK_LOCK = threading.Lock()
 CLEANUP_AFTER = 1000
+
+# Ruta secreta del panel admin — cámbiala a lo que quieras, solo tú la sabes
+ADMIN_SECRET_PATH = "gx9r2p"
 # --------------------------------------------
 
 os.environ['DISPLAY'] = os.environ.get('DISPLAY', '')
@@ -78,15 +81,7 @@ if not IS_WINDOWS:
     YDL_BASE_OPTS['ffmpeg_location'] = '/usr/bin/ffmpeg'
 
 COOKIES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
-# DESACTIVAR cookies temporalmente para probar
-USE_COOKIES = False  # Cambiado a  False para probar sin cookies
-# USE_COOKIES = os.path.exists(COOKIES_PATH) and os.path.getsize(COOKIES_PATH) > 100
-
-# Configuración de proxy - PUEDES ACTIVAR ESTO SI CONSIGUES UN PROXY
-# Formato: "http://usuario:password@proxy.com:puerto" o "http://proxy.com:puerto"
-# Proxies gratuitos: https://free-proxy-list.net/ (busca los que digan "yes" en HTTPS)
-PROXY_URL = None
-# PROXY_URL = "http://104.207.33.242:80"  # Ejemplo - reemplaza con un proxy válido
+USE_COOKIES = False
 
 if USE_COOKIES and os.path.exists(COOKIES_PATH):
     YDL_BASE_OPTS['cookiefile'] = COOKIES_PATH
@@ -94,6 +89,7 @@ if USE_COOKIES and os.path.exists(COOKIES_PATH):
 else:
     print(f"⚠️ Ejecutando SIN cookies")
 
+PROXY_URL = None
 if PROXY_URL:
     YDL_BASE_OPTS['proxy'] = PROXY_URL
     print(f"🌐 Usando proxy: {PROXY_URL}")
@@ -217,10 +213,6 @@ def search_and_download(query: str, ydl_opts: dict) -> bool:
             'ignoreerrors': True,
         }
         
-        # NO usar cookies en búsquedas
-        # if USE_COOKIES:
-        #     search_opts['cookiefile'] = COOKIES_PATH
-        
         with YoutubeDL(search_opts) as ydl:
             search_result = ydl.extract_info(search_url, download=False)
             
@@ -239,9 +231,6 @@ def search_and_download(query: str, ydl_opts: dict) -> bool:
                     print(f"⬇️ Descargando: {video_url}")
                     
                     download_opts = {**ydl_opts}
-                    # NO usar cookies
-                    # if USE_COOKIES and 'cookiefile' not in download_opts:
-                    #     download_opts['cookiefile'] = COOKIES_PATH
                     
                     with YoutubeDL(download_opts) as ydl_download:
                         ydl_download.download([video_url])
@@ -332,22 +321,24 @@ def run_batch_task(task_id: str, lines: list, format_type: str, batch_folder: st
                     files_after = set(os.listdir(batch_folder))
                     new_files = files_after - files_before
                     
-                if new_files:
-                    successful_downloads += 1
-                    
-                    # ========== APLICAR METADATOS ==========
-                    if format_type == "mp3":
-                        for new_file in new_files:
-                            if new_file.endswith('.mp3'):
-                                try:
-                                    file_path = os.path.join(batch_folder, new_file)
-                                    info = metadata_service.extract_info_from_filename(line)
-                                    metadata = metadata_service.search_metadata(info['title'], info['artist'])
-                                    if metadata:
-                                        metadata_service.apply_metadata_to_mp3(file_path, metadata)
-                                except:
-                                    pass
-                    # ========================================
+                    if new_files:
+                        successful_downloads += 1
+                        
+                        if format_type == "mp3":
+                            for new_file in new_files:
+                                if new_file.endswith('.mp3'):
+                                    try:
+                                        file_path = os.path.join(batch_folder, new_file)
+                                        info = metadata_service.extract_info_from_filename(line)
+                                        metadata = metadata_service.search_metadata(info['title'], info['artist'])
+                                        if metadata:
+                                            metadata_service.apply_metadata_to_mp3(file_path, metadata)
+                                    except:
+                                        pass
+                    else:
+                        failed.append(line)
+                        print(f"⚠️ No se detectaron archivos nuevos para URL")
+                
                 else:
                     print(f"🔎 Procesando búsqueda: {line}")
                     
@@ -394,53 +385,56 @@ def run_batch_task(task_id: str, lines: list, format_type: str, batch_folder: st
             return
         
         downloaded_files = os.listdir(batch_folder)
-        print(f"📁 Archivos en carpeta: {len(downloaded_files)}")
-        
-        TASKS[task_id]['status'] = 'zipping'
-        print("📦 Creando archivo ZIP...")
+        print(f"📁 Archivos descargados ({len(downloaded_files)}):")
+        for f in downloaded_files:
+            print(f"   - {f}")
         
         zip_filename = f"batch_{task_id}.zip"
         zip_path = os.path.join(DOWNLOADS_DIR, zip_filename)
+        
+        print(f"\n📦 Creando ZIP: {zip_path}")
         create_zip_on_disk(batch_folder, zip_path)
         
-        TASKS[task_id]['zip_path'] = zip_path
-        TASKS[task_id]['status'] = 'done'
+        zip_size = os.path.getsize(zip_path) / 1024 / 1024
+        print(f"✅ ZIP creado: {zip_size:.2f} MB")
         
-        print(f"✅ ZIP creado: {zip_path}")
-        print(f"📦 Tamaño: {os.path.getsize(zip_path) / 1024 / 1024:.2f} MB")
+        shutil.rmtree(batch_folder)
         
-        t = threading.Thread(target=delayed_cleanup, args=(zip_path, CLEANUP_AFTER), daemon=True)
-        t.start()
+        threading.Thread(target=delayed_cleanup, args=(zip_path, CLEANUP_AFTER), daemon=True).start()
         
-        try:
-            shutil.rmtree(batch_folder)
-            print(f"🗑️ Carpeta temporal eliminada")
-        except Exception as e:
-            print(f"⚠️ No se pudo eliminar carpeta temporal: {e}")
-            
+        with TASK_LOCK:
+            TASKS[task_id].update({
+                'status': 'done',
+                'zip_path': zip_path,
+                'message': f'Descarga completada. {successful_downloads}/{total} exitosas.'
+            })
+        
+        print(f"🎉 Tarea {task_id} completada exitosamente")
+        
     except Exception as e:
-        TASKS[task_id]['status'] = 'failed'
-        TASKS[task_id]['message'] = str(e)
-        print(f"❌ Error crítico en run_batch_task: {e}")
+        print(f"❌ ERROR CRÍTICO en tarea {task_id}: {e}")
         traceback.print_exc()
+        with TASK_LOCK:
+            TASKS[task_id].update({
+                'status': 'failed',
+                'message': str(e)
+            })
 
 # ==================== ENDPOINTS DE AUTENTICACIÓN ====================
 
 @app.post("/api/validate_code")
 def validate_access_code(code: str = Form(...)):
-    """Endpoint para validar el código de acceso"""
+    """Validates the access code"""
     result = auth.validate_code(code)
     return JSONResponse(result)
 
 @app.get("/api/admin/codes")
 def get_all_codes():
-    """Obtiene todos los códigos (para el panel admin)"""
     codes = auth.get_all_codes()
     return JSONResponse({"codes": codes})
 
 @app.post("/api/admin/generate_code")
 def generate_new_code(days: int = Form(30), custom_code: str = Form(None)):
-    """Genera un nuevo código (para el panel admin)"""
     if custom_code:
         result = auth.create_code(days=days, custom_code=custom_code)
     else:
@@ -449,7 +443,6 @@ def generate_new_code(days: int = Form(30), custom_code: str = Form(None)):
 
 @app.post("/api/admin/delete_code")
 def delete_code(code: str = Form(...)):
-    """Elimina un código (para el panel admin)"""
     success = auth.delete_code(code)
     if success:
         return JSONResponse({"success": True, "message": "Código eliminado"})
@@ -467,13 +460,22 @@ def root():
         return FileResponse(index_path)
     return JSONResponse({"message": "Index no encontrado"})
 
-@app.get("/admin")
+# OLD /admin route is GONE.
+# The admin panel is served at a secret path defined by ADMIN_SECRET_PATH.
+# Access is only granted if the client has rockola_is_admin in sessionStorage
+# (enforced in admin.html itself). The URL is not guessable.
+@app.get(f"/{ADMIN_SECRET_PATH}")
 def admin_panel():
-    """Ruta para el panel de administración"""
+    """Secret admin panel route — not linked anywhere publicly"""
     admin_path = BASE_DIR / "admin.html"
     if admin_path.exists():
         return FileResponse(admin_path)
-    return JSONResponse({"message": "Panel admin no encontrado"})
+    return JSONResponse({"message": "Not found"}, status_code=404)
+
+# Return 404 for anyone trying the old /admin path
+@app.get("/admin")
+def admin_old():
+    raise HTTPException(status_code=404, detail="Not found")
 
 @app.post("/download/")
 def download_single(url: str = Form(...), format_type: str = Form("mp3")):
@@ -482,16 +484,14 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
     os.makedirs(output_folder, exist_ok=True)
     filename = str(uuid.uuid4())
     
-    # Pequeño delay para evitar rate limiting
     time.sleep(0.5)
     
-    # Opciones mejoradas con mejor logging
     ydl_opts_download = {
         **YDL_BASE_OPTS,
         'outtmpl': os.path.join(output_folder, f"{filename}.%(ext)s"),
         'quiet': False,
         'no_warnings': False,
-        'verbose': False,  # Cambiar a False para menos spam
+        'verbose': False,
     }
     
     if USE_COOKIES and os.path.exists(COOKIES_PATH):
@@ -524,31 +524,18 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
         print(f"🔖 Filename base: {filename}")
         print(f"{'='*60}\n")
         
-
-        video_info = None  # ← AGREGAR ESTO
+        video_info = None
         with YoutubeDL(ydl_opts_download) as ydl:
             info = ydl.extract_info(url, download=True)
             
             if not info:
-                raise HTTPException(...)
+                raise HTTPException(status_code=500, detail="No se pudo extraer información del video.")
             
-            # ← AGREGAR ESTAS LÍNEAS
             video_info = {
                 'title': info.get('title', ''),
                 'uploader': info.get('uploader', ''),
             }
 
-        # # Intentar descargar
-        # with YoutubeDL(ydl_opts_download) as ydl:
-        #     info = ydl.extract_info(url, download=True)
-            
-        #     if not info:
-        #         raise HTTPException(
-        #             status_code=500, 
-        #             detail="No se pudo extraer información del video. Verifica que la URL sea válida."
-        #         )
-   
-        # Buscar archivo descargado
         print(f"\n🔍 Buscando archivos con prefijo: {filename}")
         downloaded_file = None
         for file in os.listdir(output_folder):
@@ -559,11 +546,10 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
                 break
         
         if not downloaded_file:
-            # Listar todos los archivos para debug
             all_files = os.listdir(output_folder)
             print(f"\n❌ No se encontró archivo con prefijo '{filename}'")
             print(f"📋 Archivos en carpeta ({len(all_files)}):")
-            for f in all_files[-10:]:  # Últimos 10
+            for f in all_files[-10:]:
                 print(f"   - {f}")
             
             raise HTTPException(
@@ -571,7 +557,6 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
                 detail="El archivo no se descargó correctamente. Verifica la URL o intenta con otra."
             )
         
-        # Verificar que el archivo no esté vacío
         file_size = os.path.getsize(downloaded_file)
         print(f"📦 Tamaño del archivo: {file_size / 1024 / 1024:.2f} MB")
         
@@ -585,9 +570,7 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
         simple_filename = f"descarga.{ext}"
         
         print(f"✅ Descarga exitosa: {simple_filename}\n")
-        
 
-        # ========== APLICAR METADATOS ==========
         if format_type == "mp3" and downloaded_file.endswith('.mp3'):
             try:
                 title = video_info.get('title', '') if video_info else ''
@@ -603,9 +586,7 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
                     print(f"🎉 Metadatos aplicados")
             except Exception as e:
                 print(f"⚠️ Error metadatos: {e}")
-        # ========================================
 
-        # Programar limpieza
         threading.Thread(target=delayed_cleanup, args=(downloaded_file, 60), daemon=True).start()
         
         return FileResponse(
@@ -676,6 +657,37 @@ async def download_batch_start(file: UploadFile = File(...), format_type: str = 
     thread.start()
     return {"task_id": task_id, "message": "Tarea iniciada. Consulta /status/{task_id} para seguimiento."}
 
+# NEW: batch start from raw text (no file upload needed)
+@app.post("/download_batch_text/")
+async def download_batch_text(text: str = Form(...), format_type: str = Form("mp3")):
+    lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
+    if not lines:
+        raise HTTPException(status_code=400, detail="El texto está vacío o no tiene canciones válidas")
+    
+    print(f"\n📝 Texto recibido directamente")
+    print(f"📋 Total de líneas: {len(lines)}")
+    for i, line in enumerate(lines[:5], 1):
+        print(f"   {i}. {line}")
+
+    task_id = str(uuid.uuid4())
+    batch_folder = os.path.join(DOWNLOADS_DIR, task_id)
+    os.makedirs(batch_folder, exist_ok=True)
+    with TASK_LOCK:
+        TASKS[task_id] = {
+            'status': 'queued',
+            'progress': 0,
+            'total': len(lines),
+            'success': 0,
+            'failed': [],
+            'zip_path': None,
+            'started_at': None,
+            'finished_at': None,
+            'message': None,
+        }
+    thread = threading.Thread(target=run_batch_task, args=(task_id, lines, format_type, batch_folder), daemon=True)
+    thread.start()
+    return {"task_id": task_id, "message": "Tarea iniciada desde texto."}
+
 @app.get("/status/{task_id}")
 def get_status(task_id: str):
     task = TASKS.get(task_id)
@@ -718,9 +730,6 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
         **YDL_BASE_OPTS,
         'restrictfilenames': True,
     }
-    # NO usar cookies
-    # if USE_COOKIES:
-    #     ydl_opts_playlist['cookiefile'] = COOKIES_PATH
     if format_type == "mp3":
         ydl_opts_playlist.update({
             'format': 'bestaudio/best',

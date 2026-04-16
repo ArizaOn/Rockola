@@ -23,6 +23,13 @@
             <button class="side-nav-close" id="sideNavClose">✕</button>
         </div>
         <ul class="side-nav-links">
+            <!-- Admin link: hidden by default, shown only if rockola_is_admin is set -->
+            <li id="nav-admin-item" style="display:none;">
+                <a href="/gx9r2p" class="side-nav-link side-nav-link--admin">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Panel Admin</span>
+                </a>
+            </li>
             <li>
                 <a href="/" class="side-nav-link active">
                     <span class="nav-icon">🎵</span>
@@ -36,9 +43,9 @@
                 </a>
             </li>
             <li>
-                <a href="/me" class="side-nav-link">
-                    <span class="nav-icon">👤</span>
-                    <span>Yo</span>
+                <a href="/word-connector/" class="side-nav-link">
+                    <span class="nav-icon">🎴</span>
+                    <span>Word connector</span>
                 </a>
             </li>
         </ul>
@@ -69,17 +76,6 @@
 
     <!-- ============ CONTENIDO ORIGINAL (sin cambios) ============ -->
     <div class="container">
-        <div class="warning-banner">
-            <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-            <div class="warning-content">
-                <h3>Advertencia Legal</h3>
-                <p>El uso de esta herramienta se considera un delito en la mayoría de países. El descargar cualquier canción con derechos de autor queda bajo tu criterio y responsabilidad.</p>
-            </div>
-        </div>
         <header>
             <h1>🎵 Descargador de Música</h1>
             <p class="subtitle">Descarga música desde URL, archivo de texto o playlist de spotify</p>
@@ -92,7 +88,7 @@
         <div class="content">
             <div class="tab-content active" id="url-tab">
                 <div class="input-group">
-                    <label for="single-url">Ingresa la URL del video/audio:</label>
+                    <label for="single-url">Ingresa la URL del video/audio de Youtube:</label>
                     <input type="text" id="single-url" placeholder="https://www.youtube.com/watch?v=..." />
                 </div>
                 <div class="options">
@@ -103,14 +99,47 @@
                     Descargar
                 </button>
             </div>
+
+            <!-- ============ FILE TAB — DUAL MODE ============ -->
             <div class="tab-content" id="file-tab">
-                <div class="input-group">
-                    <label for="txt-file">Selecciona un archivo .txt con URLs (una por línea):</label>
-                    <div class="file-input-wrapper" id="drop-zone">
-                        <input type="file" id="txt-file" accept=".txt,.xlsx,.xls,.csv" />
-                        <span class="file-name">Ningún archivo seleccionado</span>
+
+                <!-- Toggle buttons -->
+                <div class="file-mode-toggle">
+                    <button class="file-mode-btn active" id="btn-mode-file" onclick="setFileMode('file')">
+                        📁 Subir archivo
+                    </button>
+                    <button class="file-mode-btn" id="btn-mode-text" onclick="setFileMode('text')">
+                        ✏️ Escribir aquí
+                    </button>
+                </div>
+
+                <!-- Mode: upload file -->
+                <div id="file-mode-upload">
+                    <div class="input-group">
+                        <label for="txt-file">Selecciona un archivo .txt con URLs (una por línea):</label>
+                        <div class="file-input-wrapper" id="drop-zone">
+                            <input type="file" id="txt-file" accept=".txt,.xlsx,.xls,.csv" />
+                            <span class="file-name">Ningún archivo seleccionado</span>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Mode: type directly -->
+                <div id="file-mode-text" style="display:none;">
+                    <div class="input-group">
+                        <label for="songs-textarea">Escribe una canción por línea:</label>
+                        <textarea
+                            id="songs-textarea"
+                            class="songs-textarea"
+                            placeholder="i dont care violent vira&#10;damn girl rock n chile&#10;piel con piel la santa grifa&#10;https://www.youtube.com/watch?v=..."
+                            spellcheck="false"
+                        ></textarea>
+                        <div class="textarea-counter">
+                            <span id="songs-count">0</span> canciones detectadas
+                        </div>
+                    </div>
+                </div>
+
                 <div class="options">
                     <label><input type="checkbox" id="file-audio-only" checked /> Solo audio (MP3)</label>
                 </div>
@@ -119,11 +148,11 @@
                     Descargar Todo
                 </button>
             </div>
+            <!-- ============ END FILE TAB ============ -->
+
             <div class="tab-content" id="playlist-tab">
                 <div class="input-group">
-                    <label for="playlist-url">Ingresa la URL de la playlist o sube un archivo Excel:</label>
-                    <input type="text" id="playlist-url" placeholder="https://www.youtube.com/playlist?list=..." />
-                    <div style="text-align: center; margin: 15px 0; color: #666; font-size: 0.9em;">- O -</div>
+                    <label for="playlist-url">Sube un archivo Excel tipo csv:</label>
                     <div class="file-input-wrapper" id="playlist-drop-zone">
                         <input type="file" id="excel-file" accept=".xlsx,.xls,.csv,.txt" />
                         <span class="file-name-playlist">Ningún archivo seleccionado</span>
@@ -146,8 +175,8 @@
             <h3>ℹ️ Información</h3>
             <ul>
                 <li><strong>URL Individual:</strong> Descarga un solo video o audio desde su URL directa de YouTube.</li>
-                <li><strong>Archivo .txt:</strong> Sube un archivo de texto con múltiples URLs o nombres de canciones junto al nombre del artista (una por línea) para descarga masiva.</li>
-                <li><strong>Playlist:</strong> Descarga todos los videos de una playlist de Spotify u otras plataformas compatibles.</li>
+                <li><strong>Archivo .txt:</strong> Sube un archivo de texto con múltiples URLs o nombres de canciones junto al nombre del artista (una por línea) para descarga masiva. También puedes escribirlos directamente sin subir ningún archivo.</li>
+                <li><strong>Playlist:</strong> Descarga todos los videos de una playlist de Spotify u otras plataformas compatibles. Necesitas usar Exportify o hacer el archivo .csv tu mismo.</li>
             </ul>
         </div>
         <br>
@@ -165,23 +194,24 @@
             <div class="tab-content" id="file-faq">
                 <div class="info-box-FAQ">
                     <h3>❓ Preguntas Frecuentes</h3>
-                    <h4>Archivos .txt</h4>
+                    <h4>Archivos .txt / Escritura directa</h4>
                     <ul>
-                        <li><strong>¿Qué estructura o formato deben de tener las canciones?:</strong> Debes escribir nombre de la canción y del artista, algo así como: "i dont care violent vira". Te va a quedar como:
+                        <li><strong>¿Qué estructura o formato deben de tener las canciones?:</strong> Escribe el nombre de la canción y del artista en la misma línea, algo así como: "i dont care violent vira". Queda así:
                             <br><code>i dont care violent vira</code>
                             <br><code>damn girl rock n chile</code>
                             <br><code>piel con piel la santa grifa</code>
                         </li>
+                        <li><strong>¿Puedo mezclar URLs y nombres?:</strong> Sí, cada línea puede ser una URL de YouTube o un nombre de canción.</li>
                     </ul>
                 </div>
             </div>
             <div class="tab-content" id="playlist-faq">
                 <div class="info-box-FAQ">
                     <h3>❓ Preguntas Frecuentes</h3>
-                    <h4>Playlist / Excel (.xlsx)</h4>
+                    <h4>Playlist / Excel (.csv)</h4>
                     <ul>
-                        <li><strong>Le subo mi archivo Excel y no se descarga:</strong> A veces pasa, vuelve a intentarlo, sino checa si el archivo es .xlsx. Si lo descargaste de Exportify: Archivo → Guardar como → Examinar → Tipo → Libro.</li>
-                        <li><strong>Le subo la URL de mi playlist de Spotify pero no se descarga:</strong> Lo sentimos, aún no tenemos esa función :(</li>
+                        <li><strong>Le subo mi archivo Excel y no se descarga:</strong> Revisa que estes subiendo el tipo de archivo adecuado, debe de ser .csv, actualmente no soportamos otros formatos como xlsx.</li>
+                        <li><strong>Con que plataformas funciona?:</strong> Actualmente solo se puede para playlist de Spotify</li>
                     </ul>
                 </div>
                 <div class="info-box-FAQ">
@@ -197,18 +227,46 @@
                 </div>
             </div>
         </div>
+        <div class="warning-banner">
+            <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <div class="warning-content">
+                <h3>Advertencia Legal</h3>
+                <p>El uso de esta herramienta se considera un delito en la mayoría de países. El descargar cualquier canción con derechos de autor queda bajo tu criterio y responsabilidad.</p>
+            </div>
+        </div>
     </div>
-
+    
     <script>
+        // ============ AUTH ============
         document.addEventListener('DOMContentLoaded', function() {
             const overlay = document.getElementById('auth-overlay');
             const form = document.getElementById('auth-form');
             const input = document.getElementById('auth-code-input');
             const submitBtn = document.getElementById('auth-submit-btn');
             const errorMsg = document.getElementById('auth-error-msg');
-            if (sessionStorage.getItem('rockola_authenticated') === 'true') { overlay.style.display = 'none'; return; }
+
+            // Show admin nav link if already authenticated as admin
+            if (sessionStorage.getItem('rockola_is_admin') === 'true') {
+                document.getElementById('nav-admin-item').style.display = '';
+            }
+
+            if (sessionStorage.getItem('rockola_authenticated') === 'true') {
+                overlay.style.display = 'none';
+                return;
+            }
+
             setTimeout(() => input.focus(), 400);
-            function showError(message) { errorMsg.textContent = message; errorMsg.classList.add('show'); setTimeout(() => errorMsg.classList.remove('show'), 4000); }
+
+            function showError(message) {
+                errorMsg.textContent = message;
+                errorMsg.classList.add('show');
+                setTimeout(() => errorMsg.classList.remove('show'), 4000);
+            }
+
             async function validateCode(code) {
                 if (!code.trim()) { showError('⚠️ Por favor ingresa un código'); return; }
                 submitBtn.disabled = true;
@@ -220,21 +278,40 @@
                     const result = await response.json();
                     if (result.valid) {
                         sessionStorage.setItem('rockola_authenticated', 'true');
+
+                        // If admin code, reveal the admin nav link
+                        if (result.is_admin) {
+                            sessionStorage.setItem('rockola_is_admin', 'true');
+                            document.getElementById('nav-admin-item').style.display = '';
+                        }
+
                         submitBtn.innerHTML = '✓ Acceso Concedido';
                         submitBtn.classList.add('auth-success');
-                        setTimeout(() => { overlay.style.animation = 'authFadeOut 0.4s ease'; setTimeout(() => overlay.style.display = 'none', 400); }, 1000);
+                        setTimeout(() => {
+                            overlay.style.animation = 'authFadeOut 0.4s ease';
+                            setTimeout(() => overlay.style.display = 'none', 400);
+                        }, 1000);
                     } else {
                         showError(result.message || '❌ Código inválido');
-                        submitBtn.disabled = false; submitBtn.innerHTML = 'Ingresar'; input.value = ''; input.focus();
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = 'Ingresar';
+                        input.value = '';
+                        input.focus();
                     }
-                } catch (error) { showError('⚠️ Error de conexión.'); submitBtn.disabled = false; submitBtn.innerHTML = 'Ingresar'; }
+                } catch (error) {
+                    showError('⚠️ Error de conexión.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Ingresar';
+                }
             }
+
             form.addEventListener('submit', (e) => { e.preventDefault(); validateCode(input.value); });
             input.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); validateCode(input.value); } });
         });
     </script>
 
     <script>
+        // ============ HAMBURGER NAV ============
         const hamburgerBtn = document.getElementById('hamburgerBtn');
         const sideNav      = document.getElementById('sideNav');
         const navOverlay   = document.getElementById('navOverlay');
@@ -247,6 +324,32 @@
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNav(); });
     </script>
 
+    <script>
+        // ============ FILE TAB MODE TOGGLE ============
+        // let currentFileMode = 'file';
+
+        function setFileMode(mode) {
+            currentFileMode = mode;
+            document.getElementById('file-mode-upload').style.display = mode === 'file' ? '' : 'none';
+            document.getElementById('file-mode-text').style.display   = mode === 'text' ? '' : 'none';
+            document.getElementById('btn-mode-file').classList.toggle('active', mode === 'file');
+            document.getElementById('btn-mode-text').classList.toggle('active', mode === 'text');
+        }
+
+        // Live counter for textarea
+        document.addEventListener('DOMContentLoaded', function() {
+            const ta = document.getElementById('songs-textarea');
+            const counter = document.getElementById('songs-count');
+            if (ta && counter) {
+                ta.addEventListener('input', () => {
+                    const lines = ta.value.split('\n').filter(l => l.trim().length > 0);
+                    counter.textContent = lines.length;
+                });
+            }
+        });
+    </script>
+
     <script src="/static/scriptIndex.js"></script>
 </body>
 </html>
+

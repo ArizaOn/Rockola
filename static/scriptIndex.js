@@ -3,27 +3,44 @@
 // Version: Final (modo: tareas para archivos + playlists con archivo)
 // ================================
 
-// -------------------- Manejo de tabs --------------------
-document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        const tabName = tab.dataset.tab;
+// La variable se declara solo aquí para evitar el error de "redeclaration"
+let currentFileMode = 'file'; 
 
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+document.addEventListener('DOMContentLoaded', () => {
+    // -------------------- MANEJO DE TABS (URL, ARCHIVO, PLAYLIST) --------------------
+    const tabs = document.querySelectorAll('.tab');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const target = tab.dataset.tab; // Esto lee "url", "file" o "playlist"
 
-        tab.classList.add('active');
+            // 1. Quitar 'active' de todos los botones y contenidos
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-        const mainTab = document.getElementById(`${tabName}-tab`);
-        const faqTab = document.getElementById(`${tabName}-faq`);
-        const guideTab = document.getElementById(`${tabName}-guide`);
+            // 2. Activar el botón pulsado
+            tab.classList.add('active');
 
-        if (mainTab) mainTab.classList.add('active');
-        if (faqTab) faqTab.classList.add('active');
-        if (guideTab) guideTab.classList.add('active');
+            // 3. Activar la sección correspondiente (usando tus IDs: url-tab, file-tab, playlist-tab)
+            const targetContent = document.getElementById(target + '-tab');
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+
+            // 4. Activar el FAQ correspondiente (url-faq, file-faq, playlist-faq)
+            const targetFaq = document.getElementById(target + '-faq');
+            if (targetFaq) {
+                targetFaq.classList.add('active');
+            }
+        });
     });
 });
+// ----------------------------------
 
-// -------------------- Helpers UI / progreso --------------------
+
+
+
+
 function showProgress(message) {
     const container = document.getElementById('progress-container');
     const text = document.getElementById('progress-text');
@@ -227,7 +244,6 @@ if (playlistDropArea && excelFileInput) {
 
 // -------------------- Utilidades --------------------
 function cleanFilename(filename) {
-    // Mantener básica limpieza
     return filename.replace(/_+$/, '').replace(/[<>:"/\\|?*]/g, '_').trim();
 }
 
@@ -280,48 +296,93 @@ async function downloadSingle() {
     }
 }
 
-// -------------------- DESCARGA MASIVA: archivo TXT/CSV/XLSX --------------------
+// -------------------- DESCARGA MASIVA: archivo TXT/CSV/XLSX o texto directo --------------------
 async function downloadFromFile() {
-    const file = document.getElementById('txt-file').files[0];
     const audioOnly = document.getElementById('file-audio-only').checked;
 
-    if (!file) {
-        alert('Por favor selecciona un archivo');
-        return;
-    }
+    // Determine which mode is active
+    const mode = (typeof currentFileMode !== 'undefined') ? currentFileMode : 'file';
 
-    showProgress('Subiendo archivo y creando tarea...');
-    updateProgress(5);
+    if (mode === 'text') {
+        // ---- TEXT MODE: send raw text to new endpoint ----
+        const textarea = document.getElementById('songs-textarea');
+        const text = textarea ? textarea.value.trim() : '';
 
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
-
-    try {
-        // iniciar tarea en backend
-        const startRes = await fetch('/download_batch_start/', { method: 'POST', body: fd });
-
-        if (!startRes.ok) {
-            const t = await startRes.text();
-            throw new Error(t || 'Error iniciando task');
+        if (!text) {
+            alert('Por favor escribe al menos una canción');
+            return;
         }
 
-        const data = await startRes.json();
-        const taskId = data.task_id;
-        console.log('Task iniciado:', data);
+        const lines = text.split('\n').filter(l => l.trim().length > 0);
+        if (lines.length === 0) {
+            alert('No se detectaron canciones válidas');
+            return;
+        }
 
-        // Polling y UI
-        await pollTaskAndDownload(taskId);
-    } catch (err) {
-        console.error('downloadFromFile error:', err);
-        alert('Error: ' + (err.message || err));
-        hideProgress();
+        showProgress(`Enviando ${lines.length} canciones...`);
+        updateProgress(5);
+
+        const fd = new FormData();
+        fd.append('text', text);
+        fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
+
+        try {
+            const startRes = await fetch('/download_batch_text/', { method: 'POST', body: fd });
+
+            if (!startRes.ok) {
+                const t = await startRes.text();
+                throw new Error(t || 'Error iniciando tarea desde texto');
+            }
+
+            const data = await startRes.json();
+            console.log('Task texto iniciado:', data);
+            await pollTaskAndDownload(data.task_id);
+        } catch (err) {
+            console.error('downloadFromFile(text) error:', err);
+            alert('Error: ' + (err.message || err));
+            hideProgress();
+        }
+
+    } else {
+        // ---- FILE MODE: original behavior ----
+        const file = document.getElementById('txt-file').files[0];
+
+        if (!file) {
+            alert('Por favor selecciona un archivo');
+            return;
+        }
+
+        showProgress('Subiendo archivo y creando tarea...');
+        updateProgress(5);
+
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
+
+        try {
+            const startRes = await fetch('/download_batch_start/', { method: 'POST', body: fd });
+
+            if (!startRes.ok) {
+                const t = await startRes.text();
+                throw new Error(t || 'Error iniciando task');
+            }
+
+            const data = await startRes.json();
+            const taskId = data.task_id;
+            console.log('Task iniciado:', data);
+
+            await pollTaskAndDownload(taskId);
+        } catch (err) {
+            console.error('downloadFromFile error:', err);
+            alert('Error: ' + (err.message || err));
+            hideProgress();
+        }
     }
 }
 
-// -------------------- DESCARGA PLAYLIST (USANDO TAREAS SI SUBES EXCEL, SINO ENDPOINT DIRECTO) --------------------
+// -------------------- DESCARGA PLAYLIST --------------------
 async function downloadPlaylist() {
-    const url = document.getElementById('playlist-url').value;
+    const url = document.getElementById('playlist-url')?.value || '';
     const file = document.getElementById('excel-file').files[0];
     const audioOnly = document.getElementById('playlist-audio-only').checked;
 
@@ -330,7 +391,6 @@ async function downloadPlaylist() {
         return;
     }
 
-    // Si hay archivo => usar el flow de tareas (batch_start)
     if (file) {
         showProgress('Subiendo Excel y creando tarea para playlist (batch)...');
         updateProgress(5);
@@ -359,7 +419,6 @@ async function downloadPlaylist() {
         }
 
     } else {
-        // Si solo hay URL -> usamos endpoint /download_playlist/ (bloqueante). Le damos timeout largo.
         showProgress('Descargando playlist desde URL (esto puede tardar)...');
         updateProgress(5);
 
@@ -368,7 +427,7 @@ async function downloadPlaylist() {
         fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
 
         try {
-            const resp = await fetchWithTimeout('/download_playlist/', { method: 'POST', body: fd }, 90 * 60 * 1000); // 90 min
+            const resp = await fetchWithTimeout('/download_playlist/', { method: 'POST', body: fd }, 90 * 60 * 1000);
             if (!resp.ok) {
                 const t = await resp.text();
                 throw new Error(t || 'Error en download_playlist');
@@ -402,7 +461,6 @@ async function pollTaskAndDownload(taskId) {
     updateProgress(5);
 
     let lastProgress = 0;
-    // Poll cada 1s
     return new Promise(resolve => {
         const interval = setInterval(async () => {
             try {
@@ -412,24 +470,19 @@ async function pollTaskAndDownload(taskId) {
                     return;
                 }
                 const st = await resp.json();
-                // Evitar NaN
                 const total = st.total || 1;
                 const progress = st.progress || 0;
                 const pct = Math.round((progress / total) * 100);
 
-                // Update UI
                 updateProgress(pct);
                 showProgress(`Procesando ${progress}/${total} — ${st.current || ''}`);
 
-                // If finished and zip ready
                 if (st.status === 'done' && st.zip_ready === true) {
                     clearInterval(interval);
-                    // Descargar ZIP
                     await downloadResultZip(taskId);
                     resolve();
                 }
 
-                // If failed or error
                 if (st.status === 'failed' || st.status === 'error') {
                     clearInterval(interval);
                     alert('La tarea falló: ' + (st.message || 'Error desconocido'));
@@ -437,11 +490,9 @@ async function pollTaskAndDownload(taskId) {
                     resolve();
                 }
 
-                // Small optimization to avoid updating too often
                 if (progress > lastProgress) lastProgress = progress;
             } catch (err) {
                 console.error('poll error:', err);
-                // no stops on transient error - keep polling
             }
         }, 1000);
     });
@@ -450,7 +501,6 @@ async function pollTaskAndDownload(taskId) {
 // -------------------- Descargar resultado (ZIP final) --------------------
 async function downloadResultZip(taskId) {
     try {
-        // Intent directo por URL; el backend validará si está listo o no.
         const link = document.createElement('a');
         link.href = `/download_result/${taskId}`;
         link.download = 'batch_download.zip';
@@ -468,10 +518,8 @@ async function downloadResultZip(taskId) {
 }
 
 // -------------------- Exportar funciones globales --------------------
-// Estas deben coincidir con los onclick del HTML
 window.downloadSingle = downloadSingle;
 window.downloadFromFile = downloadFromFile;
 window.downloadPlaylist = downloadPlaylist;
 
 // Fin de script
-

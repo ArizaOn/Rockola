@@ -1,0 +1,8 @@
+https://supabase.com/dashboard/project/ochahqbfrrzuevrzjadc/integrations/data_api/overview
+password: debloyan_rdh
+
+API URL:
+https://ochahqbfrrzuevrzjadc.supabase.co
+
+API Anon key:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jaGFocWJmcnJ6dWV2cnpqYWRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDMzOTIsImV4cCI6MjA4NzcxOTM5Mn0.x0WUNHo62H4Y7bs8sGet6sKuz9HlfGwqQ3GZNxS64Sw

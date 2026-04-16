@@ -34,6 +34,119 @@ body {
 
 
 
+
+/* ============================================================ */
+/* ================== FILE MODE TOGGLE ======================== */
+/* ============================================================ */
+
+.file-mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    background: rgba(10, 10, 20, 0.5);
+    padding: 6px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 0, 255, 0.15);
+}
+
+.file-mode-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: #888;
+    font-size: 0.9em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    letter-spacing: 0.02em;
+}
+
+.file-mode-btn:hover {
+    color: #ff00ff;
+    background: rgba(255, 0, 255, 0.07);
+    border-color: rgba(255, 0, 255, 0.2);
+}
+
+.file-mode-btn.active {
+    background: linear-gradient(135deg, rgba(255, 0, 255, 0.18), rgba(0, 255, 255, 0.12));
+    color: #00ffff;
+    border-color: rgba(0, 255, 255, 0.4);
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+    box-shadow: 0 0 12px rgba(0, 255, 255, 0.15), inset 0 0 12px rgba(0, 255, 255, 0.05);
+}
+
+/* Textarea for direct song input */
+.songs-textarea {
+    width: 100%;
+    min-height: 180px;
+    padding: 14px;
+    border: 2px solid rgba(0, 255, 255, 0.3);
+    border-radius: 8px;
+    font-size: 0.95em;
+    font-family: 'Courier New', Courier, monospace;
+    background: rgba(10, 10, 20, 0.8);
+    color: #e0e0e0;
+    resize: vertical;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    line-height: 1.6;
+}
+
+.songs-textarea:focus {
+    outline: none;
+    border-color: #00ffff;
+    box-shadow:
+        0 0 20px rgba(0, 255, 255, 0.3),
+        inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    background: rgba(0, 20, 30, 0.9);
+}
+
+.songs-textarea::placeholder {
+    color: #444;
+    font-style: italic;
+}
+
+.textarea-counter {
+    margin-top: 8px;
+    font-size: 0.82em;
+    color: #666;
+    text-align: right;
+    transition: color 0.2s;
+}
+
+.textarea-counter:has(#songs-count:not(:empty)) {
+    color: #00ffff99;
+}
+
+/* ============================================================ */
+/* ================== ADMIN NAV LINK ========================== */
+/* ============================================================ */
+
+.side-nav-link--admin {
+    border-color: rgba(255, 215, 0, 0.15) !important;
+    color: #ffd700 !important;
+    background: rgba(255, 215, 0, 0.05) !important;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 0, 255, 0.15);
+    padding-bottom: 16px;
+    margin-bottom: 10px;
+}
+
+.side-nav-link--admin:hover {
+    background: rgba(255, 215, 0, 0.12) !important;
+    border-color: rgba(255, 215, 0, 0.4) !important;
+    color: #ffe866 !important;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.6) !important;
+    padding-left: 18px;
+}
+
+
+
+
+
+
 .container {
 
     max-width: 800px;
