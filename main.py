@@ -479,13 +479,20 @@ def admin_old():
 
 @app.post("/download/")
 def download_single(url: str = Form(...), format_type: str = Form("mp3")):
-    url = clean_url(url)
+    query = url.strip()
+    input_is_url = is_url(query)
+
+    if input_is_url:
+        resolved_url = clean_url(query)
+    else:
+        resolved_url = f"ytsearch1:{query}"
+
     output_folder = DOWNLOADS_DIR
     os.makedirs(output_folder, exist_ok=True)
     filename = str(uuid.uuid4())
-    
+
     time.sleep(0.5)
-    
+
     ydl_opts_download = {
         **YDL_BASE_OPTS,
         'outtmpl': os.path.join(output_folder, f"{filename}.%(ext)s"),
@@ -493,13 +500,13 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
         'no_warnings': False,
         'verbose': False,
     }
-    
+
     if USE_COOKIES and os.path.exists(COOKIES_PATH):
         ydl_opts_download['cookiefile'] = COOKIES_PATH
         print(f"🍪 Usando cookies: {COOKIES_PATH}")
     else:
         print(f"🚫 SIN cookies - modo público")
-    
+
     if format_type == "mp3":
         ydl_opts_download.update({
             'format': 'bestaudio/best',
@@ -516,21 +523,30 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
             'merge_output_format': 'mp4',
         })
         print("🎬 Modo: MP4")
-    
+
     try:
         print(f"\n{'='*60}")
-        print(f"📥 Descargando URL: {url}")
+        if input_is_url:
+            print(f"📥 Descargando URL: {resolved_url}")
+        else:
+            print(f"🔍 Descargando por nombre: '{query}'  →  {resolved_url}")
         print(f"📁 Carpeta: {output_folder}")
         print(f"🔖 Filename base: {filename}")
         print(f"{'='*60}\n")
-        
+
         video_info = None
         with YoutubeDL(ydl_opts_download) as ydl:
-            info = ydl.extract_info(url, download=True)
-            
+            info = ydl.extract_info(resolved_url, download=True)
+
             if not info:
-                raise HTTPException(status_code=500, detail="No se pudo extraer información del video.")
-            
+                raise HTTPException(status_code=500, detail="No se pudo encontrar o descargar la canción.")
+
+            if 'entries' in info:
+                info = info['entries'][0] if info['entries'] else None
+
+            if not info:
+                raise HTTPException(status_code=500, detail="No se encontraron resultados para esa búsqueda.")
+
             video_info = {
                 'title': info.get('title', ''),
                 'uploader': info.get('uploader', ''),
@@ -762,6 +778,215 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
         if os.path.exists(playlist_folder):
             shutil.rmtree(playlist_folder)
         raise HTTPException(status_code=500, detail=str(e))
+
+from spotify_scraper import SpotifyClient
+
+def get_spotify_tracks(playlist_url: str) -> list[dict]:
+    """Obtiene nombre y artista de cada canción de una playlist pública de Spotify."""
+    client = SpotifyClient()
+    try:
+        playlist = client.get_playlist_info(playlist_url)
+        tracks = []
+        for track in playlist.get('tracks', []):
+            nombre = track.get('name', '').strip()
+            artista = ''
+            artists = track.get('artists', [])
+            if artists:
+                artista = artists[0].get('name', '').strip()
+            if nombre:
+                tracks.append({'title': nombre, 'artist': artista})
+            time.sleep(0.6)  # delay entre tracks para evitar rate limiting
+        return tracks
+    finally:
+        client.close()
+
+
+def run_spotify_task(task_id: str, playlist_url: str, format_type: str, batch_folder: str):
+    """Descarga una playlist de Spotify via spotifyscraper + yt-dlp"""
+    try:
+        print(f"\n{'='*60}")
+        print(f"🎵 Iniciando descarga Spotify: {task_id}")
+        print(f"🔗 URL: {playlist_url}")
+        print(f"📂 Carpeta: {batch_folder}")
+        print(f"{'='*60}\n")
+
+        with TASK_LOCK:
+            TASKS[task_id].update({
+                'status': 'running',
+                'message': 'Obteniendo canciones de Spotify...',
+                'started_at': datetime.utcnow().isoformat(),
+            })
+
+        # 1. Obtener lista de canciones de Spotify
+        print("📋 Obteniendo tracks de Spotify...")
+        tracks = get_spotify_tracks(playlist_url)
+
+        if not tracks:
+            with TASK_LOCK:
+                TASKS[task_id].update({
+                    'status': 'failed',
+                    'message': 'No se encontraron canciones. Verifica que la playlist sea pública.',
+                    'finished_at': datetime.utcnow().isoformat(),
+                })
+            return
+
+        total = len(tracks)
+        print(f"✅ {total} canciones encontradas")
+
+        with TASK_LOCK:
+            TASKS[task_id].update({
+                'total': total,
+                'message': f'Descargando {total} canciones...',
+            })
+
+        # 2. Descargar cada canción con yt-dlp via ytsearch
+        success = 0
+        failed = []
+
+        for i, track in enumerate(tracks, 1):
+            nombre  = track['title']
+            artista = track['artist']
+            query   = f"{nombre} {artista}".strip()
+            search  = f"ytsearch1:{query}"
+
+            print(f"\n[{i}/{total}] 🔍 Buscando: {query}")
+
+            with TASK_LOCK:
+                TASKS[task_id].update({
+                    'progress': i,
+                    'current': query,
+                    'message': f'[{i}/{total}] Descargando: {query}',
+                })
+
+            ydl_opts = {
+                **YDL_BASE_OPTS,
+                'outtmpl': os.path.join(batch_folder, '%(title)s.%(ext)s'),
+                'quiet': True,
+                'no_warnings': True,
+            }
+
+            if USE_COOKIES and os.path.exists(COOKIES_PATH):
+                ydl_opts['cookiefile'] = COOKIES_PATH
+
+            if format_type == "mp3":
+                ydl_opts.update({
+                    'format': 'bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                })
+            else:
+                ydl_opts.update({
+                    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                    'merge_output_format': 'mp4',
+                })
+
+            try:
+                with YoutubeDL(ydl_opts) as ydl:
+                    ydl.extract_info(search, download=True)
+                success += 1
+                print(f"   ✅ OK")
+            except Exception as e:
+                print(f"   ❌ Error: {e}")
+                failed.append(query)
+
+            time.sleep(0.5)  # delay entre descargas
+
+        # 3. Aplicar metadatos
+        if format_type == "mp3":
+            for fname in os.listdir(batch_folder):
+                if fname.endswith('.mp3'):
+                    try:
+                        fpath = os.path.join(batch_folder, fname)
+                        info  = metadata_service.extract_info_from_filename(fname)
+                        meta  = metadata_service.search_metadata(info['title'], info['artist'])
+                        if meta:
+                            metadata_service.apply_metadata_to_mp3(fpath, meta)
+                    except Exception:
+                        pass
+
+        if success == 0:
+            with TASK_LOCK:
+                TASKS[task_id].update({
+                    'status': 'failed',
+                    'message': 'No se pudo descargar ninguna canción.',
+                    'finished_at': datetime.utcnow().isoformat(),
+                })
+            shutil.rmtree(batch_folder, ignore_errors=True)
+            return
+
+        # 4. Crear ZIP
+        zip_filename = f"spotify_{task_id}.zip"
+        zip_path     = os.path.join(DOWNLOADS_DIR, zip_filename)
+        create_zip_on_disk(batch_folder, zip_path)
+        shutil.rmtree(batch_folder, ignore_errors=True)
+
+        threading.Thread(target=delayed_cleanup, args=(zip_path, CLEANUP_AFTER), daemon=True).start()
+
+        msg = f'Completado: {success}/{total} canciones descargadas.'
+        if failed:
+            msg += f' No encontradas: {len(failed)}.'
+
+        with TASK_LOCK:
+            TASKS[task_id].update({
+                'status': 'done',
+                'zip_path': zip_path,
+                'success': success,
+                'total': total,
+                'progress': total,
+                'failed': failed,
+                'message': msg,
+                'finished_at': datetime.utcnow().isoformat(),
+            })
+
+        print(f"\n🎉 Tarea Spotify {task_id} completada — {success}/{total} canciones")
+
+    except Exception as e:
+        print(f"❌ ERROR en run_spotify_task: {e}")
+        traceback.print_exc()
+        shutil.rmtree(batch_folder, ignore_errors=True)
+        with TASK_LOCK:
+            TASKS[task_id].update({
+                'status': 'failed',
+                'message': str(e),
+                'finished_at': datetime.utcnow().isoformat(),
+            })
+
+
+@app.post("/download_spotify_playlist/")
+async def download_spotify_playlist(url: str = Form(...), format_type: str = Form("mp3")):
+    url = url.strip()
+    if "spotify.com" not in url:
+        raise HTTPException(status_code=400, detail="Por favor ingresa un link válido de Spotify (open.spotify.com/playlist/...)")
+
+    task_id      = str(uuid.uuid4())
+    batch_folder = os.path.join(DOWNLOADS_DIR, task_id)
+    os.makedirs(batch_folder, exist_ok=True)
+
+    with TASK_LOCK:
+        TASKS[task_id] = {
+            'status':      'queued',
+            'progress':    0,
+            'total':       0,
+            'success':     0,
+            'failed':      [],
+            'zip_path':    None,
+            'started_at':  None,
+            'finished_at': None,
+            'message':     'Conectando con Spotify...',
+            'current':     None,
+        }
+
+    threading.Thread(
+        target=run_spotify_task,
+        args=(task_id, url, format_type, batch_folder),
+        daemon=True
+    ).start()
+
+    return {"task_id": task_id, "message": "Tarea Spotify iniciada."}
+
 
 from tarjetas.app import flashscan_app
 app.mount("/tarjetas", flashscan_app)

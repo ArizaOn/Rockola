@@ -88,8 +88,8 @@
         <div class="content">
             <div class="tab-content active" id="url-tab">
                 <div class="input-group">
-                    <label for="single-url">Ingresa la URL del video/audio de Youtube:</label>
-                    <input type="text" id="single-url" placeholder="https://www.youtube.com/watch?v=..." />
+                    <label for="single-url">URL de YouTube o nombre de canción + artista:</label>
+                    <input type="text" id="single-url" placeholder="https://youtube.com/watch?v=... ó  bad guy billie eilish" />
                 </div>
                 <div class="options">
                     <label><input type="checkbox" id="url-audio-only" checked /> Solo audio (MP3)</label>
@@ -152,16 +152,13 @@
 
             <div class="tab-content" id="playlist-tab">
                 <div class="input-group">
-                    <label for="playlist-url">Sube un archivo Excel tipo csv:</label>
-                    <div class="file-input-wrapper" id="playlist-drop-zone">
-                        <input type="file" id="excel-file" accept=".xlsx,.xls,.csv,.txt" />
-                        <span class="file-name-playlist">Ningún archivo seleccionado</span>
-                    </div>
+                    <label for="spotify-playlist-url">Pega el link de tu playlist de Spotify:</label>
+                    <input type="text" id="spotify-playlist-url" placeholder="https://open.spotify.com/playlist/..." />
                 </div>
                 <div class="options">
                     <label><input type="checkbox" id="playlist-audio-only" checked /> Solo audio (MP3)</label>
                 </div>
-                <button class="btn-download" onclick="downloadPlaylist()">
+                <button class="btn-download" onclick="downloadSpotifyPlaylist()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     Descargar Playlist
                 </button>
@@ -174,9 +171,9 @@
         <div class="info-box">
             <h3>ℹ️ Información</h3>
             <ul>
-                <li><strong>URL Individual:</strong> Descarga un solo video o audio desde su URL directa de YouTube.</li>
+                <li><strong>URL Individual:</strong> Descarga un solo video o audio desde su URL directa de YouTube, o escribe directamente el nombre de la canción y el artista.</li>
                 <li><strong>Archivo .txt:</strong> Sube un archivo de texto con múltiples URLs o nombres de canciones junto al nombre del artista (una por línea) para descarga masiva. También puedes escribirlos directamente sin subir ningún archivo.</li>
-                <li><strong>Playlist:</strong> Descarga todos los videos de una playlist de Spotify u otras plataformas compatibles. Necesitas usar Exportify o hacer el archivo .csv tu mismo.</li>
+                <li><strong>Playlist:</strong> Pega el link de cualquier playlist pública de Spotify y se descargará todo automáticamente como ZIP.</li>
             </ul>
         </div>
         <br>
@@ -186,7 +183,7 @@
                     <h3>❓ Preguntas Frecuentes</h3>
                     <h4>URL Individual</h4>
                     <ul>
-                        <li><strong>¿De dónde saco la URL?:</strong> Abre YouTube, busca la canción que quieras, copia la URL que aparece arriba (caso de PC) o copia la URL de compartir video.</li>
+                        <li><strong>¿Qué puedo poner en el campo?:</strong> Puedes pegar una URL de YouTube directamente, <em>o bien</em> escribir el nombre de la canción y el artista (ej: <code>bad guy billie eilish</code>). Si escribes un nombre, el sistema buscará automáticamente en YouTube el resultado más relevante.</li>
                         <li><strong>¿Cómo copio y pego la URL?:</strong> Usa Ctrl + C para copiar y Ctrl + V para pegar.</li>
                     </ul>
                 </div>
@@ -208,22 +205,13 @@
             <div class="tab-content" id="playlist-faq">
                 <div class="info-box-FAQ">
                     <h3>❓ Preguntas Frecuentes</h3>
-                    <h4>Playlist / Excel (.csv)</h4>
+                    <h4>Playlist de Spotify</h4>
                     <ul>
-                        <li><strong>Le subo mi archivo Excel y no se descarga:</strong> Revisa que estes subiendo el tipo de archivo adecuado, debe de ser .csv, actualmente no soportamos otros formatos como xlsx.</li>
-                        <li><strong>Con que plataformas funciona?:</strong> Actualmente solo se puede para playlist de Spotify</li>
+                        <li><strong>¿Cómo obtengo el link?:</strong> Abre Spotify, ve a la playlist, haz clic en los tres puntos → <em>Compartir</em> → <em>Copiar link de la playlist</em>. El link se ve así: <code>https://open.spotify.com/playlist/...</code></li>
+                        <li><strong>¿La playlist tiene que ser pública?:</strong> Sí, solo funcionan playlists públicas.</li>
+                        <li><strong>¿Cuánto tarda?:</strong> Aproximadamente 1-2 minutos por cada 10 canciones.</li>
+                        <li><strong>¿Con qué plataformas funciona?:</strong> Solo Spotify por el momento.</li>
                     </ul>
-                </div>
-                <div class="info-box-FAQ">
-                    <h3>📚 Cómo usar Exportify</h3>
-                    <ol>
-                        <li>Abre <a id="linkExportify" href="https://exportify.net/" target="_blank" rel="noopener noreferrer">Exportify</a></li>
-                        <li>Haz click en "Get Started"</li>
-                        <li>Inicia sesión en Spotify</li>
-                        <li>Elige la playlist y dale click en "Export"</li>
-                        <li>Se descargará un .csv — pásalo a .xlsx: Archivo → Guardar como → Libro de Excel</li>
-                        <li>Arrastra el .xlsx al área de drop y descarga.</li>
-                    </ol>
                 </div>
             </div>
         </div>
@@ -352,4 +340,3 @@
     <script src="/static/scriptIndex.js"></script>
 </body>
 </html>
-

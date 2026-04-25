@@ -249,11 +249,11 @@ function cleanFilename(filename) {
 
 // -------------------- Descarga individual --------------------
 async function downloadSingle() {
-    const url = document.getElementById('single-url').value;
+    const input = document.getElementById('single-url').value.trim();
     const audioOnly = document.getElementById('url-audio-only').checked;
 
-    if (!url) {
-        alert('Por favor ingresa una URL válida');
+    if (!input) {
+        alert('Por favor ingresa una URL o el nombre de la canción');
         return;
     }
 
@@ -261,7 +261,7 @@ async function downloadSingle() {
     updateProgress(10);
 
     const formData = new FormData();
-    formData.append('url', url);
+    formData.append('url', input);
     formData.append('format_type', audioOnly ? 'mp3' : 'mp4');
 
     try {
@@ -380,78 +380,43 @@ async function downloadFromFile() {
     }
 }
 
-// -------------------- DESCARGA PLAYLIST --------------------
-async function downloadPlaylist() {
-    const url = document.getElementById('playlist-url')?.value || '';
-    const file = document.getElementById('excel-file').files[0];
+// -------------------- DESCARGA PLAYLIST SPOTIFY --------------------
+async function downloadSpotifyPlaylist() {
+    const url = document.getElementById('spotify-playlist-url').value.trim();
     const audioOnly = document.getElementById('playlist-audio-only').checked;
 
-    if (!url && !file) {
-        alert('Por favor ingresa una URL de playlist o selecciona un archivo Excel');
+    if (!url) {
+        alert('Por favor pega el link de tu playlist de Spotify');
         return;
     }
 
-    if (file) {
-        showProgress('Subiendo Excel y creando tarea para playlist (batch)...');
-        updateProgress(5);
+    if (!url.includes('spotify.com')) {
+        alert('⚠️ El link debe ser de Spotify (open.spotify.com/playlist/...)');
+        return;
+    }
 
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
+    showProgress('Conectando con Spotify...');
+    updateProgress(5);
 
-        try {
-            const startRes = await fetch('/download_batch_start/', { method: 'POST', body: fd });
+    const fd = new FormData();
+    fd.append('url', url);
+    fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
 
-            if (!startRes.ok) {
-                const t = await startRes.text();
-                throw new Error(t || 'Error iniciando task para playlist');
-            }
+    try {
+        const startRes = await fetch('/download_spotify_playlist/', { method: 'POST', body: fd });
 
-            const data = await startRes.json();
-            const taskId = data.task_id;
-            console.log('Task playlist iniciado:', data);
-
-            await pollTaskAndDownload(taskId);
-        } catch (err) {
-            console.error('downloadPlaylist(file) error:', err);
-            alert('Error: ' + (err.message || err));
-            hideProgress();
+        if (!startRes.ok) {
+            const t = await startRes.text();
+            throw new Error(t || 'Error iniciando descarga de playlist');
         }
 
-    } else {
-        showProgress('Descargando playlist desde URL (esto puede tardar)...');
-        updateProgress(5);
-
-        const fd = new FormData();
-        fd.append('url', url);
-        fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
-
-        try {
-            const resp = await fetchWithTimeout('/download_playlist/', { method: 'POST', body: fd }, 90 * 60 * 1000);
-            if (!resp.ok) {
-                const t = await resp.text();
-                throw new Error(t || 'Error en download_playlist');
-            }
-
-            const blob = await resp.blob();
-            if (blob.size === 0) throw new Error('ZIP recibido vacío');
-
-            const dlUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = dlUrl;
-            a.download = 'playlist_download.zip';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(dlUrl);
-
-            updateProgress(100);
-            setTimeout(hideProgress, 800);
-        } catch (err) {
-            console.error('downloadPlaylist(url) error:', err);
-            alert('Error: ' + (err.message || err));
-            hideProgress();
-        }
+        const data = await startRes.json();
+        console.log('Tarea Spotify iniciada:', data);
+        await pollTaskAndDownload(data.task_id);
+    } catch (err) {
+        console.error('downloadSpotifyPlaylist error:', err);
+        alert('Error: ' + (err.message || err));
+        hideProgress();
     }
 }
 
@@ -520,6 +485,6 @@ async function downloadResultZip(taskId) {
 // -------------------- Exportar funciones globales --------------------
 window.downloadSingle = downloadSingle;
 window.downloadFromFile = downloadFromFile;
-window.downloadPlaylist = downloadPlaylist;
+window.downloadSpotifyPlaylist = downloadSpotifyPlaylist;
 
 // Fin de script
