@@ -117,9 +117,11 @@
                 <div id="file-mode-upload">
                     <div class="input-group">
                         <label for="txt-file">Selecciona un archivo .txt con URLs (una por línea):</label>
-                        <div class="file-input-wrapper" id="drop-zone">
+                        <div class="file-input-wrapper drop-zone" id="drop-zone">
                             <input type="file" id="txt-file" accept=".txt,.xlsx,.xls,.csv" />
-                            <span class="file-name">Ningún archivo seleccionado</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="34" height="34"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            <p>Arrastra tu archivo aquí o <span class="link-style">haz clic para seleccionar</span></p>
+                            <span class="file-name">Soporta .txt, .xlsx, .csv</span>
                         </div>
                     </div>
                 </div>
@@ -180,7 +182,7 @@
                 <!-- Sub-tab: Subir CSV (Exportify) -->
                 <div id="playlist-subtab-csv" style="display:none;">
                     <p class="csv-hint">
-                        Exporta tu playlist desde <a href="https://exportify.net/" target="_blank" rel="noopener">exportify.net</a> y sube el CSV aquí.
+                        Exporta tu playlist desde <a href="https://exportify.net/" style="color:#00FF00" target="_blank" rel="noopener">exportify.net</a> y sube el CSV aquí.
                     </p>
                     <div class="drop-zone" id="csv-drop-zone" onclick="document.getElementById('csv-file-input').click()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>

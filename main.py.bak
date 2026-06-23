@@ -14,6 +14,7 @@ from typing import Dict, Any
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+from spotify_scraper import SpotifyClient
 
 from metadata_service import MetadataService
 metadata_service = MetadataService()
@@ -779,7 +780,7 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
             shutil.rmtree(playlist_folder)
         raise HTTPException(status_code=500, detail=str(e))
 
-#from spotify_scraper import SpotifyClient
+from spotify_scraper import SpotifyClient
 
 def get_spotify_tracks(playlist_url: str) -> list[dict]:
     """Obtiene nombre y artista de cada canción de una playlist pública de Spotify."""
@@ -787,15 +788,15 @@ def get_spotify_tracks(playlist_url: str) -> list[dict]:
     try:
         playlist = client.get_playlist_info(playlist_url)
         tracks = []
-        for track in playlist.get('tracks', []):
-            nombre = track.get('name', '').strip()
-            artista = ''
-            artists = track.get('artists', [])
+        for track in playlist.get("tracks", []):
+            nombre = track.get("name", "").strip()
+            artista = ""
+            artists = track.get("artists", [])
             if artists:
-                artista = artists[0].get('name', '').strip()
+                artista = artists[0].get("name", "").strip()
             if nombre:
-                tracks.append({'title': nombre, 'artist': artista})
-            time.sleep(0.6)  # delay entre tracks para evitar rate limiting
+                tracks.append({"title": nombre, "artist": artista})
+            time.sleep(0.6)
         return tracks
     finally:
         client.close()

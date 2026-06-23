@@ -267,7 +267,8 @@ async function downloadSingle() {
     try {
         const response = await fetchWithTimeout('/download/', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'include'
         }, 15 * 60 * 1000); // 15 min timeout
 
         if (!response.ok) {
@@ -327,7 +328,7 @@ async function downloadFromFile() {
         fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
 
         try {
-            const startRes = await fetch('/download_batch_text/', { method: 'POST', body: fd });
+            const startRes = await fetch('/download_batch_text/', { method: 'POST', body: fd, credentials: 'include' });
 
             if (!startRes.ok) {
                 const t = await startRes.text();
@@ -360,7 +361,7 @@ async function downloadFromFile() {
         fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
 
         try {
-            const startRes = await fetch('/download_batch_start/', { method: 'POST', body: fd });
+            const startRes = await fetch('/download_batch_start/', { method: 'POST', body: fd, credentials: 'include' });
 
             if (!startRes.ok) {
                 const t = await startRes.text();
@@ -403,7 +404,7 @@ async function downloadSpotifyPlaylist() {
     fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
 
     try {
-        const startRes = await fetch('/download_spotify_playlist/', { method: 'POST', body: fd });
+        const startRes = await fetch('/download_spotify_playlist/', { method: 'POST', body: fd, credentials: 'include' });
 
         if (!startRes.ok) {
             const t = await startRes.text();
@@ -429,7 +430,7 @@ async function pollTaskAndDownload(taskId) {
     return new Promise(resolve => {
         const interval = setInterval(async () => {
             try {
-                const resp = await fetch(`/status/${taskId}`);
+                const resp = await fetch(`/status/${taskId}`, { credentials: 'include' });
                 if (!resp.ok) {
                     console.warn('status fetch no ok', resp.status);
                     return;
@@ -467,7 +468,7 @@ async function pollTaskAndDownload(taskId) {
 async function downloadResultZip(taskId) {
     try {
         const link = document.createElement('a');
-        link.href = `/download_result/${taskId}`;
+        link.href = `/download_result/${taskId}?_auth=1`;  // la cookie se manda automáticamente al ser same-origin
         link.download = 'batch_download.zip';
         document.body.appendChild(link);
         link.click();
@@ -486,6 +487,17 @@ async function downloadResultZip(taskId) {
 window.downloadSingle = downloadSingle;
 window.downloadFromFile = downloadFromFile;
 window.downloadSpotifyPlaylist = downloadSpotifyPlaylist;
+
+// setFileMode: controla el toggle "Subir archivo" / "Escribir aquí"
+// Se define aquí (no en index.html) para evitar redeclaración de currentFileMode
+function setFileMode(mode) {
+    currentFileMode = mode;
+    document.getElementById('file-mode-upload').style.display = mode === 'file' ? '' : 'none';
+    document.getElementById('file-mode-text').style.display   = mode === 'text' ? '' : 'none';
+    document.getElementById('btn-mode-file').classList.toggle('active', mode === 'file');
+    document.getElementById('btn-mode-text').classList.toggle('active', mode === 'text');
+}
+window.setFileMode = setFileMode;
 
 // -------------------- PLAYLIST SUB-TABS --------------------
 function switchPlaylistSubtab(tab) {
@@ -614,7 +626,7 @@ async function downloadFromSpotifyCSV() {
     fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
 
     try {
-        const startRes = await fetch('/download_batch_start/', { method: 'POST', body: fd });
+        const startRes = await fetch('/download_batch_start/', { method: 'POST', body: fd, credentials: 'include' });
         if (!startRes.ok) {
             const t = await startRes.text();
             throw new Error(t || 'Error iniciando descarga');

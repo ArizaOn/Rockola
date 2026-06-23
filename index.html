@@ -1,379 +1,398 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Descargador de Música</title>
-    <link rel="stylesheet" href="/static/styleIndex.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Descargador de Música</title>
+  <link rel="stylesheet" href="/static/styleIndex.css">
 </head>
 <body>
 
-    <!-- ============ MENÚ HAMBURGUESA ============ -->
-    <button class="hamburger-btn" id="hamburgerBtn" aria-label="Abrir menú">
-        <span></span>
-        <span></span>
-        <span></span>
-    </button>
+<!-- ============ MENÚ HAMBURGUESA ============ -->
+<button class="hamburger-btn" id="hamburgerBtn" aria-label="Abrir menú">
+  <span></span><span></span><span></span>
+</button>
+<div class="nav-overlay" id="navOverlay"></div>
+<nav class="side-nav" id="sideNav">
+  <div class="side-nav-header">
+    <span class="side-nav-title">ROCKOLA</span>
+    <button class="side-nav-close" id="sideNavClose">✕</button>
+  </div>
+  <ul class="side-nav-links">
+    <li id="nav-admin-item" style="display:none;">
+      <a href="/gx9r2p" class="side-nav-link side-nav-link--admin">
+        <span class="nav-icon">⚙️</span><span>Panel Admin</span>
+      </a>
+    </li>
+    <li>
+      <a href="/" class="side-nav-link active">
+        <span class="nav-icon">🎵</span><span>Descargador</span>
+      </a>
+    </li>
+    <li>
+      <a href="/tarjetas/" class="side-nav-link">
+        <span class="nav-icon">⚡</span><span>Flash Cards</span>
+      </a>
+    </li>
+    <li>
+      <a href="/word-connector/" class="side-nav-link">
+        <span class="nav-icon">🎴</span><span>Word connector</span>
+      </a>
+    </li>
+    <li>
+      <!-- Botón de cerrar sesión, oculto hasta autenticarse -->
+      <button id="logout-btn" class="side-nav-link" style="display:none;background:none;border:none;width:100%;text-align:left;cursor:pointer;color:inherit;">
+        <span class="nav-icon">🚪</span><span>Cerrar sesión</span>
+      </button>
+    </li>
+  </ul>
+</nav>
 
-    <div class="nav-overlay" id="navOverlay"></div>
-
-    <nav class="side-nav" id="sideNav">
-        <div class="side-nav-header">
-            <span class="side-nav-title">ROCKOLA</span>
-            <button class="side-nav-close" id="sideNavClose">✕</button>
+<!-- ============ MODAL DE AUTENTICACIÓN ============ -->
+<div id="auth-overlay" class="auth-overlay">
+  <div class="auth-modal">
+    <div class="auth-modal-content">
+      <div class="auth-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <h2 class="auth-title">🎵 ROCKOLA ACCESS</h2>
+      <p class="auth-subtitle">Ingresa tu código de acceso para continuar</p>
+      <form id="auth-form">
+        <div class="auth-input-group">
+          <input type="text" id="auth-code-input" class="auth-input"
+                 placeholder="Ejemplo: café con leche"
+                 autocomplete="off" spellcheck="false"/>
         </div>
-        <ul class="side-nav-links">
-            <!-- Admin link: hidden by default, shown only if rockola_is_admin is set -->
-            <li id="nav-admin-item" style="display:none;">
-                <a href="/gx9r2p" class="side-nav-link side-nav-link--admin">
-                    <span class="nav-icon">⚙️</span>
-                    <span>Panel Admin</span>
-                </a>
-            </li>
-            <li>
-                <a href="/" class="side-nav-link active">
-                    <span class="nav-icon">🎵</span>
-                    <span>Descargador</span>
-                </a>
-            </li>
-            <li>
-                <a href="/tarjetas/" class="side-nav-link">
-                    <span class="nav-icon">⚡</span>
-                    <span>Flash Cards</span>
-                </a>
-            </li>
-            <li>
-                <a href="/word-connector/" class="side-nav-link">
-                    <span class="nav-icon">🎴</span>
-                    <span>Word connector</span>
-                </a>
-            </li>
-        </ul>
-    </nav>
+        <button type="submit" id="auth-submit-btn" class="auth-button">Ingresar</button>
+        <div id="auth-error-msg" class="auth-error"></div>
+      </form>
+    </div>
+  </div>
+</div>
 
-    <!-- ============ MODAL DE AUTENTICACIÓN ============ -->
-    <div id="auth-overlay" class="auth-overlay">
-        <div class="auth-modal">
-            <div class="auth-modal-content">
-                <div class="auth-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                </div>
-                <h2 class="auth-title">🎵 ROCKOLA ACCESS</h2>
-                <p class="auth-subtitle">Ingresa tu código de acceso para continuar</p>
-                <form id="auth-form">
-                    <div class="auth-input-group">
-                        <input type="text" id="auth-code-input" class="auth-input" placeholder="Ejemplo: café con leche" autocomplete="off" spellcheck="false"/>
-                    </div>
-                    <button type="submit" id="auth-submit-btn" class="auth-button">Ingresar</button>
-                    <div id="auth-error-msg" class="auth-error"></div>
-                </form>
-            </div>
-        </div>
+<!-- ============ CONTENIDO PRINCIPAL ============ -->
+<div class="container">
+  <header>
+    <h1>🎵 Descargador de Música</h1>
+    <p class="subtitle">Descarga música desde URL, archivo de texto o playlist de spotify</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="url">Individual</button>
+    <button class="tab" data-tab="file">Archivo .txt</button>
+    <button class="tab" data-tab="playlist">Playlist</button>
+  </div>
+
+  <div class="content">
+    <!-- ── TAB: INDIVIDUAL ── -->
+    <div class="tab-content active" id="url-tab">
+      <div class="input-group">
+        <label for="single-url">URL de YouTube o nombre de canción + artista:</label>
+        <input type="text" id="single-url"
+               placeholder="https://youtube.com/watch?v=... ó bad guy billie eilish" />
+      </div>
+      <div class="options">
+        <label><input type="checkbox" id="url-audio-only" checked /> Solo audio (MP3)</label>
+      </div>
+      <button class="btn-download" onclick="downloadSingle()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Descargar
+      </button>
     </div>
 
-    <!-- ============ CONTENIDO ORIGINAL (sin cambios) ============ -->
-    <div class="container">
-        <header>
-            <h1>🎵 Descargador de Música</h1>
-            <p class="subtitle">Descarga música desde URL, archivo de texto o playlist de spotify</p>
-        </header>
-        <div class="tabs">
-            <button class="tab active" data-tab="url">Individual</button>
-            <button class="tab" data-tab="file">Archivo .txt</button>
-            <button class="tab" data-tab="playlist">Playlist</button>
-        </div>
-        <div class="content">
-            <div class="tab-content active" id="url-tab">
-                <div class="input-group">
-                    <label for="single-url">URL de YouTube o nombre de canción + artista:</label>
-                    <input type="text" id="single-url" placeholder="https://youtube.com/watch?v=... ó  bad guy billie eilish" />
-                </div>
-                <div class="options">
-                    <label><input type="checkbox" id="url-audio-only" checked /> Solo audio (MP3)</label>
-                </div>
-                <button class="btn-download" onclick="downloadSingle()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    Descargar
-                </button>
-            </div>
-
-            <!-- ============ FILE TAB — DUAL MODE ============ -->
-            <div class="tab-content" id="file-tab">
-
-                <!-- Toggle buttons -->
-                <div class="file-mode-toggle">
-                    <button class="file-mode-btn active" id="btn-mode-file" onclick="setFileMode('file')">
-                        📁 Subir archivo
-                    </button>
-                    <button class="file-mode-btn" id="btn-mode-text" onclick="setFileMode('text')">
-                        ✏️ Escribir aquí
-                    </button>
-                </div>
-
-                <!-- Mode: upload file -->
-                <div id="file-mode-upload">
-                    <div class="input-group">
-                        <label for="txt-file">Selecciona un archivo .txt con URLs (una por línea):</label>
-                        <div class="file-input-wrapper drop-zone" id="drop-zone">
-                            <input type="file" id="txt-file" accept=".txt,.xlsx,.xls,.csv" />
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="34" height="34"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                            <p>Arrastra tu archivo aquí o <span class="link-style">haz clic para seleccionar</span></p>
-                            <span class="file-name">Soporta .txt, .xlsx, .csv</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Mode: type directly -->
-                <div id="file-mode-text" style="display:none;">
-                    <div class="input-group">
-                        <label for="songs-textarea">Escribe una canción por línea:</label>
-                        <textarea
-                            id="songs-textarea"
-                            class="songs-textarea"
-                            placeholder="i dont care violent vira&#10;damn girl rock n chile&#10;piel con piel la santa grifa&#10;https://www.youtube.com/watch?v=..."
-                            spellcheck="false"
-                        ></textarea>
-                        <div class="textarea-counter">
-                            <span id="songs-count">0</span> canciones detectadas
-                        </div>
-                    </div>
-                </div>
-
-                <div class="options">
-                    <label><input type="checkbox" id="file-audio-only" checked /> Solo audio (MP3)</label>
-                </div>
-                <button class="btn-download" onclick="downloadFromFile()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    Descargar Todo
-                </button>
-            </div>
-            <!-- ============ END FILE TAB ============ -->
-
-            <div class="tab-content" id="playlist-tab">
-
-                <!-- Sub-tabs -->
-                <div class="playlist-subtabs">
-                    <button class="playlist-subtab active" id="subtab-url" onclick="switchPlaylistSubtab('url')">
-                        🎵 URL de Spotify
-                    </button>
-                    <button class="playlist-subtab" id="subtab-csv" onclick="switchPlaylistSubtab('csv')">
-                        📄 Subir CSV
-                    </button>
-                </div>
-
-                <!-- Sub-tab: URL de Spotify -->
-                <div id="playlist-subtab-url">
-                    <div class="input-group">
-                        <label for="spotify-playlist-url">Pega el link de tu playlist de Spotify:</label>
-                        <input type="text" id="spotify-playlist-url" placeholder="https://open.spotify.com/playlist/..." />
-                    </div>
-                    <div class="options">
-                        <label><input type="checkbox" id="playlist-audio-only" checked /> Solo audio (MP3)</label>
-                    </div>
-                    <button class="btn-download" onclick="downloadSpotifyPlaylist()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        Descargar Playlist
-                    </button>
-                </div>
-
-                <!-- Sub-tab: Subir CSV (Exportify) -->
-                <div id="playlist-subtab-csv" style="display:none;">
-                    <p class="csv-hint">
-                        Exporta tu playlist desde <a href="https://exportify.net/" style="color:#00FF00" target="_blank" rel="noopener">exportify.net</a> y sube el CSV aquí.
-                    </p>
-                    <div class="drop-zone" id="csv-drop-zone" onclick="document.getElementById('csv-file-input').click()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        <p>Arrastra tu CSV aquí o <span class="link-style">haz clic para seleccionar</span></p>
-                        <p id="csv-filename" class="csv-filename-label"></p>
-                    </div>
-                    <input type="file" id="csv-file-input" accept=".csv" style="display:none;" onchange="onCsvFileSelected(this)" />
-                    <div class="options">
-                        <label><input type="checkbox" id="csv-audio-only" checked /> Solo audio (MP3)</label>
-                    </div>
-                    <button class="btn-download" onclick="downloadFromSpotifyCSV()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        Descargar desde CSV
-                    </button>
-                </div>
-
-            </div>
-        </div>
-        <div class="progress-container" id="progress-container" style="display: none;">
-            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-            <p class="progress-text" id="progress-text">Procesando...</p>
-        </div>
-        <div class="info-box">
-            <h3>ℹ️ Información</h3>
-            <ul>
-                <li><strong>Individual:</strong> Descarga un solo video o audio desde su URL de YouTube, o escribe directamente el nombre de la canción y el artista.</li>
-                <li><strong>Archivo .txt:</strong> Sube un archivo de texto con múltiples URLs o nombres de canciones junto al nombre del artista (una por línea) para descarga masiva. También puedes escribirlos directamente sin subir ningún archivo.</li>
-                <li><strong>Playlist:</strong> Pega el link de cualquier playlist pública de Spotify y se descargará todo automáticamente como ZIP o también puedes subir un archivo .csv representativo sacado de <a href="https://exportify.net" target="_blank" style="color: #00FF00; text-decoration: underline;">exportify.net</a>.</li>  
-            </ul>
-        </div>
-        <br>
-        <div class="content">
-            <div class="tab-content active" id="url-faq">
-                <div class="info-box-FAQ">
-                    <h3>❓ Preguntas Frecuentes</h3>
-                    <h4>Individual</h4>
-                    <ul>
-                        <li><strong>¿Qué puedo poner en el campo?:</strong> Puedes pegar una URL de YouTube directamente, <em>o bien</em> escribir el nombre de la canción y el artista (ej: <code>bad guy billie eilish</code>). Si escribes un nombre, el sistema buscará automáticamente en YouTube el resultado más relevante.</li>
-                        <li><strong>¿Cómo copio y pego la URL?:</strong> Usa Ctrl + C para copiar y Ctrl + V para pegar.</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="tab-content" id="file-faq">
-                <div class="info-box-FAQ">
-                    <h3>❓ Preguntas Frecuentes</h3>
-                    <h4>Archivos .txt / Escritura directa</h4>
-                    <ul>
-                        <li><strong>¿Qué estructura o formato deben de tener las canciones en escritura directa?:</strong> Escribe el nombre de la canción y del artista en la misma línea, algo así como: "i dont care violent vira". Queda así:
-                            <br><code>i dont care violent vira</code>
-                            <br><code>damn girl rock n chile</code>
-                            <br><code>piel con piel la santa grifa</code>
-                        </li>
-                        <li><strong>¿Puedo mezclar URLs y nombres?:</strong> Sí, cada línea puede ser una URL de YouTube o un nombre de canción.</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="tab-content" id="playlist-faq">
-                <div class="info-box-FAQ">
-                    <h3>❓ Preguntas Frecuentes</h3>
-                    <h4>Playlist de Spotify</h4>
-                    <ul>
-                        <li><strong>¿Cómo obtengo el link?:</strong> Abre Spotify, ve a la playlist, haz clic en los tres puntos → <em>Compartir</em> → <em>Copiar link de la playlist</em>. El link se ve así: <code>https://open.spotify.com/playlist/...</code></li>
-                        <li><strong>¿La playlist tiene que ser pública?:</strong> Sí, solo funcionan playlists públicas.</li>
-                        <li><strong>¿Cuánto tarda?:</strong> Aproximadamente 1-2 minutos por cada 10 canciones.</li>
-                        <li><strong>¿Con qué plataformas funciona?:</strong> Solo Spotify por el momento.</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="warning-banner">
-            <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    <!-- ── TAB: ARCHIVO ── -->
+    <div class="tab-content" id="file-tab">
+      <div class="file-mode-toggle">
+        <button class="file-mode-btn active" id="btn-mode-file" onclick="setFileMode('file')">📁 Subir archivo</button>
+        <button class="file-mode-btn" id="btn-mode-text" onclick="setFileMode('text')">✏️ Escribir aquí</button>
+      </div>
+      <div id="file-mode-upload">
+        <div class="input-group">
+          <label for="txt-file">Selecciona un archivo .txt con URLs (una por línea):</label>
+          <div class="file-input-wrapper drop-zone" id="drop-zone">
+            <input type="file" id="txt-file" accept=".txt,.xlsx,.xls,.csv" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="34" height="34">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            <div class="warning-content">
-                <h3>Advertencia Legal</h3>
-                <p>El uso de esta herramienta se considera un delito en la mayoría de países. El descargar cualquier canción con derechos de autor queda bajo tu criterio y responsabilidad.</p>
-            </div>
+            <p>Arrastra tu archivo aquí o <span class="link-style">haz clic para seleccionar</span></p>
+            <span class="file-name">Soporta .txt, .xlsx, .csv</span>
+          </div>
         </div>
+      </div>
+      <div id="file-mode-text" style="display:none;">
+        <div class="input-group">
+          <label for="songs-textarea">Escribe una canción por línea:</label>
+          <textarea id="songs-textarea" class="songs-textarea"
+            placeholder="i dont care violent vira&#10;damn girl rock n chile&#10;piel con piel la santa grifa&#10;https://www.youtube.com/watch?v=..."
+            spellcheck="false"></textarea>
+          <div class="textarea-counter">
+            <span id="songs-count">0</span> canciones detectadas
+          </div>
+        </div>
+      </div>
+      <div class="options">
+        <label><input type="checkbox" id="file-audio-only" checked /> Solo audio (MP3)</label>
+      </div>
+      <button class="btn-download" onclick="downloadFromFile()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Descargar Todo
+      </button>
     </div>
-    
-    <script>
-        // ============ AUTH ============
-        document.addEventListener('DOMContentLoaded', function() {
-            const overlay = document.getElementById('auth-overlay');
-            const form = document.getElementById('auth-form');
-            const input = document.getElementById('auth-code-input');
-            const submitBtn = document.getElementById('auth-submit-btn');
-            const errorMsg = document.getElementById('auth-error-msg');
 
-            // Show admin nav link if already authenticated as admin
-            if (sessionStorage.getItem('rockola_is_admin') === 'true') {
-                document.getElementById('nav-admin-item').style.display = '';
-            }
+    <!-- ── TAB: PLAYLIST ── -->
+    <div class="tab-content" id="playlist-tab">
+      <div class="playlist-subtabs">
+        <button class="playlist-subtab active" id="subtab-url" onclick="switchPlaylistSubtab('url')">🎵 URL de Spotify</button>
+        <button class="playlist-subtab" id="subtab-csv" onclick="switchPlaylistSubtab('csv')">📄 Subir CSV</button>
+      </div>
+      <div id="playlist-subtab-url">
+        <div class="input-group">
+          <label for="spotify-playlist-url">Pega el link de tu playlist de Spotify:</label>
+          <input type="text" id="spotify-playlist-url" placeholder="https://open.spotify.com/playlist/..." />
+        </div>
+        <div class="options">
+          <label><input type="checkbox" id="playlist-audio-only" checked /> Solo audio (MP3)</label>
+        </div>
+        <button class="btn-download" onclick="downloadSpotifyPlaylist()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Descargar Playlist
+        </button>
+      </div>
+      <div id="playlist-subtab-csv" style="display:none;">
+        <p class="csv-hint">
+          Exporta tu playlist desde
+          <a href="https://exportify.net/" style="color:#00FF00" target="_blank" rel="noopener">exportify.net</a>
+          y sube el CSV aquí.
+        </p>
+        <div class="drop-zone" id="csv-drop-zone" onclick="document.getElementById('csv-file-input').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <p>Arrastra tu CSV aquí o <span class="link-style">haz clic para seleccionar</span></p>
+          <p id="csv-filename" class="csv-filename-label"></p>
+        </div>
+        <input type="file" id="csv-file-input" accept=".csv" style="display:none;" onchange="onCsvFileSelected(this)" />
+        <div class="options">
+          <label><input type="checkbox" id="csv-audio-only" checked /> Solo audio (MP3)</label>
+        </div>
+        <button class="btn-download" onclick="downloadFromSpotifyCSV()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Descargar desde CSV
+        </button>
+      </div>
+    </div>
+  </div>
 
-            if (sessionStorage.getItem('rockola_authenticated') === 'true') {
-                overlay.style.display = 'none';
-                return;
-            }
+  <div class="progress-container" id="progress-container" style="display: none;">
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <p class="progress-text" id="progress-text">Procesando...</p>
+  </div>
 
-            setTimeout(() => input.focus(), 400);
+  <div class="info-box">
+    <h3>ℹ️ Información</h3>
+    <ul>
+      <li><strong>Individual:</strong> Descarga un solo video o audio desde su URL de YouTube, o escribe directamente el nombre de la canción y el artista.</li>
+      <li><strong>Archivo .txt:</strong> Sube un archivo de texto con múltiples URLs o nombres de canciones junto al nombre del artista (una por línea) para descarga masiva. También puedes escribirlos directamente sin subir ningún archivo.</li>
+      <li><strong>Playlist:</strong> Pega el link de cualquier playlist pública de Spotify y se descargará todo automáticamente como ZIP o también puedes subir un archivo .csv representativo sacado de <a href="https://exportify.net" target="_blank" style="color: #00FF00; text-decoration: underline;">exportify.net</a>.</li>
+    </ul>
+  </div>
 
-            function showError(message) {
-                errorMsg.textContent = message;
-                errorMsg.classList.add('show');
-                setTimeout(() => errorMsg.classList.remove('show'), 4000);
-            }
+  <br>
+  <div class="content">
+    <div class="tab-content active" id="url-faq">
+      <div class="info-box-FAQ">
+        <h3>❓ Preguntas Frecuentes</h3>
+        <h4>Individual</h4>
+        <ul>
+          <li><strong>¿Qué puedo poner en el campo?:</strong> Puedes pegar una URL de YouTube directamente, <em>o bien</em> escribir el nombre de la canción y el artista (ej: <code>bad guy billie eilish</code>).</li>
+          <li><strong>¿Cómo copio y pego la URL?:</strong> Usa Ctrl + C para copiar y Ctrl + V para pegar.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="tab-content" id="file-faq">
+      <div class="info-box-FAQ">
+        <h3>❓ Preguntas Frecuentes</h3>
+        <h4>Archivos .txt / Escritura directa</h4>
+        <ul>
+          <li><strong>¿Qué estructura deben tener las canciones?:</strong> Escribe el nombre de la canción y del artista en la misma línea: <code>i dont care violent vira</code></li>
+          <li><strong>¿Puedo mezclar URLs y nombres?:</strong> Sí, cada línea puede ser una URL de YouTube o un nombre de canción.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="tab-content" id="playlist-faq">
+      <div class="info-box-FAQ">
+        <h3>❓ Preguntas Frecuentes</h3>
+        <h4>Playlist de Spotify</h4>
+        <ul>
+          <li><strong>¿Cómo obtengo el link?:</strong> Abre Spotify, ve a la playlist, haz clic en los tres puntos → <em>Compartir</em> → <em>Copiar link de la playlist</em>.</li>
+          <li><strong>¿La playlist tiene que ser pública?:</strong> Sí, solo funcionan playlists públicas.</li>
+          <li><strong>¿Cuánto tarda?:</strong> Aproximadamente 1-2 minutos por cada 10 canciones.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 
-            async function validateCode(code) {
-                if (!code.trim()) { showError('⚠️ Por favor ingresa un código'); return; }
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<span class="auth-spinner"></span> Verificando...';
-                try {
-                    const formData = new FormData();
-                    formData.append('code', code.trim());
-                    const response = await fetch('/api/validate_code', { method: 'POST', body: formData });
-                    const result = await response.json();
-                    if (result.valid) {
-                        sessionStorage.setItem('rockola_authenticated', 'true');
+  <div class="warning-banner">
+    <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+      <line x1="12" y1="9" x2="12" y2="13"></line>
+      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+    <div class="warning-content">
+      <h3>Advertencia Legal</h3>
+      <p>El uso de esta herramienta se considera un delito en la mayoría de países. El descargar cualquier canción con derechos de autor queda bajo tu criterio y responsabilidad.</p>
+    </div>
+  </div>
+</div>
 
-                        // If admin code, reveal the admin nav link
-                        if (result.is_admin) {
-                            sessionStorage.setItem('rockola_is_admin', 'true');
-                            document.getElementById('nav-admin-item').style.display = '';
-                        }
+<script>
+// ============ AUTH ============
+// El modal es solo UX. La defensa REAL está en el backend:
+// cada endpoint de descarga requiere una cookie de sesión firmada.
+// Si alguien elimina el modal con el inspector, el servidor
+// responderá 401 a cualquier petición de descarga.
 
-                        submitBtn.innerHTML = '✓ Acceso Concedido';
-                        submitBtn.classList.add('auth-success');
-                        setTimeout(() => {
-                            overlay.style.animation = 'authFadeOut 0.4s ease';
-                            setTimeout(() => overlay.style.display = 'none', 400);
-                        }, 1000);
-                    } else {
-                        showError(result.message || '❌ Código inválido');
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = 'Ingresar';
-                        input.value = '';
-                        input.focus();
-                    }
-                } catch (error) {
-                    showError('⚠️ Error de conexión.');
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Ingresar';
-                }
-            }
+document.addEventListener('DOMContentLoaded', async function () {
+  const overlay   = document.getElementById('auth-overlay');
+  const form      = document.getElementById('auth-form');
+  const input     = document.getElementById('auth-code-input');
+  const submitBtn = document.getElementById('auth-submit-btn');
+  const errorMsg  = document.getElementById('auth-error-msg');
+  const logoutBtn = document.getElementById('logout-btn');
 
-            form.addEventListener('submit', (e) => { e.preventDefault(); validateCode(input.value); });
-            input.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); validateCode(input.value); } });
-        });
-    </script>
+  // ── Verificar sesión activa en el servidor ──
+  // Si hay una cookie de sesión válida, el modal no se muestra.
+  try {
+    const check = await fetch('/api/me', { credentials: 'include' });
+    if (check.ok) {
+      const me = await check.json();
+      overlay.style.display = 'none';
+      logoutBtn.style.display = '';
+      if (me.is_admin) {
+        document.getElementById('nav-admin-item').style.display = '';
+      }
+      return; // sesión activa — listo
+    }
+  } catch (_) { /* sin conexión o sesión inexistente → mostrar modal */ }
 
-    <script>
-        // ============ HAMBURGER NAV ============
-        const hamburgerBtn = document.getElementById('hamburgerBtn');
-        const sideNav      = document.getElementById('sideNav');
-        const navOverlay   = document.getElementById('navOverlay');
-        const sideNavClose = document.getElementById('sideNavClose');
-        function openNav()  { sideNav.classList.add('open'); navOverlay.classList.add('open'); hamburgerBtn.classList.add('open'); }
-        function closeNav() { sideNav.classList.remove('open'); navOverlay.classList.remove('open'); hamburgerBtn.classList.remove('open'); }
-        hamburgerBtn.addEventListener('click', openNav);
-        sideNavClose.addEventListener('click', closeNav);
-        navOverlay.addEventListener('click', closeNav);
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNav(); });
-    </script>
+  // Sin sesión válida → mostrar modal
+  overlay.style.display = '';
+  setTimeout(() => input.focus(), 400);
 
-    <script>
-        // ============ FILE TAB MODE TOGGLE ============
-        // let currentFileMode = 'file';
+  function showError(message) {
+    errorMsg.textContent = message;
+    errorMsg.classList.add('show');
+    setTimeout(() => errorMsg.classList.remove('show'), 4000);
+  }
 
-        function setFileMode(mode) {
-            currentFileMode = mode;
-            document.getElementById('file-mode-upload').style.display = mode === 'file' ? '' : 'none';
-            document.getElementById('file-mode-text').style.display   = mode === 'text' ? '' : 'none';
-            document.getElementById('btn-mode-file').classList.toggle('active', mode === 'file');
-            document.getElementById('btn-mode-text').classList.toggle('active', mode === 'text');
+  async function validateCode(code) {
+    if (!code.trim()) { showError('⚠️ Por favor ingresa un código'); return; }
+    submitBtn.disabled   = true;
+    submitBtn.innerHTML  = '<span class="auth-spinner"></span> Verificando...';
+    try {
+      const formData = new FormData();
+      formData.append('code', code.trim());
+      // credentials:'include' es necesario para que el navegador acepte la cookie
+      const response = await fetch('/api/validate_code', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      const result = await response.json();
+
+      if (result.valid) {
+        // La cookie ya fue emitida por el servidor.
+        // El modal se puede cerrar — pero aunque alguien lo elimine del DOM,
+        // sin la cookie el servidor rechazará cualquier petición.
+        logoutBtn.style.display = '';
+        if (result.is_admin) {
+          document.getElementById('nav-admin-item').style.display = '';
         }
+        submitBtn.innerHTML = '✓ Acceso Concedido';
+        submitBtn.classList.add('auth-success');
+        setTimeout(() => {
+          overlay.style.animation = 'authFadeOut 0.4s ease';
+          setTimeout(() => overlay.style.display = 'none', 400);
+        }, 1000);
+      } else {
+        showError(result.message || '❌ Código inválido');
+        submitBtn.disabled  = false;
+        submitBtn.innerHTML = 'Ingresar';
+        input.value = '';
+        input.focus();
+      }
+    } catch (error) {
+      showError('⚠️ Error de conexión.');
+      submitBtn.disabled  = false;
+      submitBtn.innerHTML = 'Ingresar';
+    }
+  }
 
-        // Live counter for textarea
-        document.addEventListener('DOMContentLoaded', function() {
-            const ta = document.getElementById('songs-textarea');
-            const counter = document.getElementById('songs-count');
-            if (ta && counter) {
-                ta.addEventListener('input', () => {
-                    const lines = ta.value.split('\n').filter(l => l.trim().length > 0);
-                    counter.textContent = lines.length;
-                });
-            }
-        });
-    </script>
+  form.addEventListener('submit', (e) => { e.preventDefault(); validateCode(input.value); });
+  input.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); validateCode(input.value); } });
 
-    <script src="/static/scriptIndex.js"></script>
+  // ── Cerrar sesión ──
+  logoutBtn.addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+    location.reload();
+  });
+});
+</script>
+
+<script>
+// ============ HAMBURGER NAV ============
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const sideNav      = document.getElementById('sideNav');
+const navOverlay   = document.getElementById('navOverlay');
+const sideNavClose = document.getElementById('sideNavClose');
+
+function openNav()  { sideNav.classList.add('open');    navOverlay.classList.add('open');    hamburgerBtn.classList.add('open'); }
+function closeNav() { sideNav.classList.remove('open'); navOverlay.classList.remove('open'); hamburgerBtn.classList.remove('open'); }
+
+hamburgerBtn.addEventListener('click', openNav);
+sideNavClose.addEventListener('click', closeNav);
+navOverlay.addEventListener('click', closeNav);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNav(); });
+</script>
+
+<script>
+// ============ TEXTAREA COUNTER ============
+// (currentFileMode y setFileMode viven en scriptIndex.js)
+document.addEventListener('DOMContentLoaded', function () {
+  const ta      = document.getElementById('songs-textarea');
+  const counter = document.getElementById('songs-count');
+  if (ta && counter) {
+    ta.addEventListener('input', () => {
+      const lines = ta.value.split('\n').filter(l => l.trim().length > 0);
+      counter.textContent = lines.length;
+    });
+  }
+});
+</script>
+
+<script src="/static/scriptIndex.js"></script>
 </body>
 </html>
