@@ -14,6 +14,7 @@ from typing import Dict, Any
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+from spotify_scraper import SpotifyClient
 
 from metadata_service import MetadataService
 metadata_service = MetadataService()
@@ -287,7 +288,7 @@ def run_batch_task(task_id: str, lines: list, format_type: str, batch_folder: st
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
-                    'preferredquality': '192',
+                    'preferredquality': '0',
                 }],
             })
             print("🎵 Modo: Solo audio (MP3)")
@@ -513,7 +514,7 @@ def download_single(url: str = Form(...), format_type: str = Form("mp3")):
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '192',
+                'preferredquality': '0',
             }],
         })
         print("🎵 Modo: MP3")
@@ -753,7 +754,7 @@ def download_playlist(url: str = Form(...), format_type: str = Form("mp3")):
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '192',
+                'preferredquality': '0',
             }],
         })
     else:
@@ -787,15 +788,15 @@ def get_spotify_tracks(playlist_url: str) -> list[dict]:
     try:
         playlist = client.get_playlist_info(playlist_url)
         tracks = []
-        for track in playlist.get('tracks', []):
-            nombre = track.get('name', '').strip()
-            artista = ''
-            artists = track.get('artists', [])
+        for track in playlist.get("tracks", []):
+            nombre = track.get("name", "").strip()
+            artista = ""
+            artists = track.get("artists", [])
             if artists:
-                artista = artists[0].get('name', '').strip()
+                artista = artists[0].get("name", "").strip()
             if nombre:
-                tracks.append({'title': nombre, 'artist': artista})
-            time.sleep(0.6)  # delay entre tracks para evitar rate limiting
+                tracks.append({"title": nombre, "artist": artista})
+            time.sleep(0.6)
         return tracks
     finally:
         client.close()
@@ -874,7 +875,7 @@ def run_spotify_task(task_id: str, playlist_url: str, format_type: str, batch_fo
                     'postprocessors': [{
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
-                        'preferredquality': '192',
+                        'preferredquality': '0',
                     }],
                 })
             else:
@@ -988,8 +989,8 @@ async def download_spotify_playlist(url: str = Form(...), format_type: str = For
     return {"task_id": task_id, "message": "Tarea Spotify iniciada."}
 
 
-from tarjetas.app import flashscan_app
-app.mount("/tarjetas", flashscan_app)
+#from tarjetas.app import flashscan_app
+#app.mount("/tarjetas", flashscan_app)
 
 if __name__ == "__main__":
     import uvicorn

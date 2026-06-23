@@ -487,4 +487,147 @@ window.downloadSingle = downloadSingle;
 window.downloadFromFile = downloadFromFile;
 window.downloadSpotifyPlaylist = downloadSpotifyPlaylist;
 
+// -------------------- PLAYLIST SUB-TABS --------------------
+function switchPlaylistSubtab(tab) {
+    document.getElementById('playlist-subtab-url').style.display = tab === 'url' ? '' : 'none';
+    document.getElementById('playlist-subtab-csv').style.display = tab === 'csv' ? '' : 'none';
+    document.getElementById('subtab-url').classList.toggle('active', tab === 'url');
+    document.getElementById('subtab-csv').classList.toggle('active', tab === 'csv');
+}
+window.switchPlaylistSubtab = switchPlaylistSubtab;
+
+// -------------------- DRAG & DROP para CSV --------------------
+(function setupCsvDropZone() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const zone = document.getElementById('csv-drop-zone');
+        if (!zone) return;
+
+        zone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.csv')) {
+                setCsvFile(file);
+            } else {
+                alert('⚠️ Por favor suelta un archivo .csv');
+            }
+        });
+    });
+})();
+
+let _csvFile = null;
+
+function setCsvFile(file) {
+    _csvFile = file;
+    const label = document.getElementById('csv-filename');
+    if (label) label.textContent = `📄 ${file.name}`;
+}
+
+function onCsvFileSelected(input) {
+    if (input.files && input.files[0]) {
+        setCsvFile(input.files[0]);
+    }
+}
+window.onCsvFileSelected = onCsvFileSelected;
+
+// -------------------- DESCARGA DESDE CSV EXPORTIFY --------------------
+function parseExportifyCSV(text) {
+    // Quitar BOM si existe
+    text = text.replace(/^\uFEFF/, '');
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+
+    // Parsear header
+    const header = splitCSVLine(lines[0]);
+    const trackIdx  = header.findIndex(h => h.trim().toLowerCase() === 'track name');
+    const artistIdx = header.findIndex(h => h.trim().toLowerCase() === 'artist name(s)');
+
+    if (trackIdx === -1) {
+        alert('⚠️ El CSV no tiene columna "Track Name". ¿Es un CSV de Exportify?');
+        return [];
+    }
+
+    const tracks = [];
+    for (let i = 1; i < lines.length; i++) {
+        const cols = splitCSVLine(lines[i]);
+        const track  = (cols[trackIdx]  || '').trim();
+        const artist = artistIdx !== -1 ? (cols[artistIdx] || '').trim() : '';
+        if (track) {
+            tracks.push(artist ? `${track} ${artist}` : track);
+        }
+    }
+    return tracks;
+}
+
+function splitCSVLine(line) {
+    // CSV split respetando comillas
+    const result = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+            inQuotes = !inQuotes;
+        } else if (ch === ',' && !inQuotes) {
+            result.push(cur);
+            cur = '';
+        } else {
+            cur += ch;
+        }
+    }
+    result.push(cur);
+    return result;
+}
+
+async function downloadFromSpotifyCSV() {
+    if (!_csvFile) {
+        alert('Por favor selecciona o arrastra un archivo CSV primero.');
+        return;
+    }
+
+    const audioOnly = document.getElementById('csv-audio-only').checked;
+
+    const text = await _csvFile.text();
+    const tracks = parseExportifyCSV(text);
+
+    if (tracks.length === 0) {
+        alert('No se encontraron canciones en el CSV.');
+        return;
+    }
+
+    console.log(`🎵 CSV procesado: ${tracks.length} canciones`);
+
+    showProgress(`Enviando ${tracks.length} canciones...`);
+    updateProgress(5);
+
+    // Crear un .txt virtual con las canciones y mandarlo al endpoint batch
+    const blob = new Blob([tracks.join('\n')], { type: 'text/plain' });
+    const virtualFile = new File([blob], 'spotify_export.txt', { type: 'text/plain' });
+
+    const fd = new FormData();
+    fd.append('file', virtualFile);
+    fd.append('format_type', audioOnly ? 'mp3' : 'mp4');
+
+    try {
+        const startRes = await fetch('/download_batch_start/', { method: 'POST', body: fd });
+        if (!startRes.ok) {
+            const t = await startRes.text();
+            throw new Error(t || 'Error iniciando descarga');
+        }
+        const data = await startRes.json();
+        console.log('Tarea CSV iniciada:', data);
+        await pollTaskAndDownload(data.task_id);
+    } catch (err) {
+        console.error('downloadFromSpotifyCSV error:', err);
+        alert('Error: ' + (err.message || err));
+        hideProgress();
+    }
+}
+window.downloadFromSpotifyCSV = downloadFromSpotifyCSV;
+
 // Fin de script

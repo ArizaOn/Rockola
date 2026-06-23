@@ -81,7 +81,7 @@
             <p class="subtitle">Descarga música desde URL, archivo de texto o playlist de spotify</p>
         </header>
         <div class="tabs">
-            <button class="tab active" data-tab="url">URL Individual</button>
+            <button class="tab active" data-tab="url">Individual</button>
             <button class="tab" data-tab="file">Archivo .txt</button>
             <button class="tab" data-tab="playlist">Playlist</button>
         </div>
@@ -117,9 +117,11 @@
                 <div id="file-mode-upload">
                     <div class="input-group">
                         <label for="txt-file">Selecciona un archivo .txt con URLs (una por línea):</label>
-                        <div class="file-input-wrapper" id="drop-zone">
+                        <div class="file-input-wrapper drop-zone" id="drop-zone">
                             <input type="file" id="txt-file" accept=".txt,.xlsx,.xls,.csv" />
-                            <span class="file-name">Ningún archivo seleccionado</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="34" height="34"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            <p>Arrastra tu archivo aquí o <span class="link-style">haz clic para seleccionar</span></p>
+                            <span class="file-name">Soporta .txt, .xlsx, .csv</span>
                         </div>
                     </div>
                 </div>
@@ -151,17 +153,52 @@
             <!-- ============ END FILE TAB ============ -->
 
             <div class="tab-content" id="playlist-tab">
-                <div class="input-group">
-                    <label for="spotify-playlist-url">Pega el link de tu playlist de Spotify:</label>
-                    <input type="text" id="spotify-playlist-url" placeholder="https://open.spotify.com/playlist/..." />
+
+                <!-- Sub-tabs -->
+                <div class="playlist-subtabs">
+                    <button class="playlist-subtab active" id="subtab-url" onclick="switchPlaylistSubtab('url')">
+                        🎵 URL de Spotify
+                    </button>
+                    <button class="playlist-subtab" id="subtab-csv" onclick="switchPlaylistSubtab('csv')">
+                        📄 Subir CSV
+                    </button>
                 </div>
-                <div class="options">
-                    <label><input type="checkbox" id="playlist-audio-only" checked /> Solo audio (MP3)</label>
+
+                <!-- Sub-tab: URL de Spotify -->
+                <div id="playlist-subtab-url">
+                    <div class="input-group">
+                        <label for="spotify-playlist-url">Pega el link de tu playlist de Spotify:</label>
+                        <input type="text" id="spotify-playlist-url" placeholder="https://open.spotify.com/playlist/..." />
+                    </div>
+                    <div class="options">
+                        <label><input type="checkbox" id="playlist-audio-only" checked /> Solo audio (MP3)</label>
+                    </div>
+                    <button class="btn-download" onclick="downloadSpotifyPlaylist()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Descargar Playlist
+                    </button>
                 </div>
-                <button class="btn-download" onclick="downloadSpotifyPlaylist()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    Descargar Playlist
-                </button>
+
+                <!-- Sub-tab: Subir CSV (Exportify) -->
+                <div id="playlist-subtab-csv" style="display:none;">
+                    <p class="csv-hint">
+                        Exporta tu playlist desde <a href="https://exportify.net/" style="color:#00FF00" target="_blank" rel="noopener">exportify.net</a> y sube el CSV aquí.
+                    </p>
+                    <div class="drop-zone" id="csv-drop-zone" onclick="document.getElementById('csv-file-input').click()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <p>Arrastra tu CSV aquí o <span class="link-style">haz clic para seleccionar</span></p>
+                        <p id="csv-filename" class="csv-filename-label"></p>
+                    </div>
+                    <input type="file" id="csv-file-input" accept=".csv" style="display:none;" onchange="onCsvFileSelected(this)" />
+                    <div class="options">
+                        <label><input type="checkbox" id="csv-audio-only" checked /> Solo audio (MP3)</label>
+                    </div>
+                    <button class="btn-download" onclick="downloadFromSpotifyCSV()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Descargar desde CSV
+                    </button>
+                </div>
+
             </div>
         </div>
         <div class="progress-container" id="progress-container" style="display: none;">
@@ -171,9 +208,9 @@
         <div class="info-box">
             <h3>ℹ️ Información</h3>
             <ul>
-                <li><strong>URL Individual:</strong> Descarga un solo video o audio desde su URL directa de YouTube, o escribe directamente el nombre de la canción y el artista.</li>
+                <li><strong>Individual:</strong> Descarga un solo video o audio desde su URL de YouTube, o escribe directamente el nombre de la canción y el artista.</li>
                 <li><strong>Archivo .txt:</strong> Sube un archivo de texto con múltiples URLs o nombres de canciones junto al nombre del artista (una por línea) para descarga masiva. También puedes escribirlos directamente sin subir ningún archivo.</li>
-                <li><strong>Playlist:</strong> Pega el link de cualquier playlist pública de Spotify y se descargará todo automáticamente como ZIP.</li>
+                <li><strong>Playlist:</strong> Pega el link de cualquier playlist pública de Spotify y se descargará todo automáticamente como ZIP o también puedes subir un archivo .csv representativo sacado de <a href="https://exportify.net" target="_blank" style="color: #00FF00; text-decoration: underline;">exportify.net</a>.</li>  
             </ul>
         </div>
         <br>
@@ -181,7 +218,7 @@
             <div class="tab-content active" id="url-faq">
                 <div class="info-box-FAQ">
                     <h3>❓ Preguntas Frecuentes</h3>
-                    <h4>URL Individual</h4>
+                    <h4>Individual</h4>
                     <ul>
                         <li><strong>¿Qué puedo poner en el campo?:</strong> Puedes pegar una URL de YouTube directamente, <em>o bien</em> escribir el nombre de la canción y el artista (ej: <code>bad guy billie eilish</code>). Si escribes un nombre, el sistema buscará automáticamente en YouTube el resultado más relevante.</li>
                         <li><strong>¿Cómo copio y pego la URL?:</strong> Usa Ctrl + C para copiar y Ctrl + V para pegar.</li>
@@ -193,7 +230,7 @@
                     <h3>❓ Preguntas Frecuentes</h3>
                     <h4>Archivos .txt / Escritura directa</h4>
                     <ul>
-                        <li><strong>¿Qué estructura o formato deben de tener las canciones?:</strong> Escribe el nombre de la canción y del artista en la misma línea, algo así como: "i dont care violent vira". Queda así:
+                        <li><strong>¿Qué estructura o formato deben de tener las canciones en escritura directa?:</strong> Escribe el nombre de la canción y del artista en la misma línea, algo así como: "i dont care violent vira". Queda así:
                             <br><code>i dont care violent vira</code>
                             <br><code>damn girl rock n chile</code>
                             <br><code>piel con piel la santa grifa</code>

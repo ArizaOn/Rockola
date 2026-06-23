@@ -6,4 +6,24 @@ Debo de aclarar que el uso de esta web para descargar canciones queda totalmente
 Actualización, ya sé, un poquito de ciberceguridad... nah aún practicamente nada jaja
 
 ----------
+
+## Instalación
+
+> ⚠️ Requiere Python 3.13. Python 3.14 (actual en Arch) no es compatible con `pydantic-core`.
+
+```bash
+yay -S python313
+python3.13 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 pip install mutagen
+python main.py
+```
+
+Abre el navegador en http://localhost:5000
+
+----------
+
+## Notas de desarrollo
+
+- Línea 782 de `main.py`: `from spotify_scraper import SpotifyClient` — comentada, pendiente de reemplazar con scraping directo vía `requests` + `beautifulsoup4`.

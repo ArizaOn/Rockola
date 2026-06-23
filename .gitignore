@@ -1,3 +1,6 @@
-tarjetas/
-tarjetas/
+venv/
 downloads/
+__pycache__/
+*.pyc
+codes.json
+cookies.txt
