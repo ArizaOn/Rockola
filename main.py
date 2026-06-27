@@ -20,10 +20,87 @@ from spotify_scraper import SpotifyClient
 from metadata_service import MetadataService
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
+# Cargar .env si existe
+from pathlib import Path as _Path
+_env_file = _Path(__file__).resolve().parent / ".env"
+if _env_file.exists():
+    for _line in _env_file.read_text().splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+
 metadata_service = MetadataService()
+
+BASE_DIR       = Path(__file__).resolve().parent
 
 # ============== IMPORTAR SISTEMA DE AUTH ==============
 from auth_system import auth
+# ======================================================
+
+# ============== TELEMETRÍA ============================
+import json as _json
+
+TELEMETRY_FILE = BASE_DIR / "telemetry.json"
+_TELE_LOCK     = threading.Lock()
+
+def _load_logs() -> list:
+    try:
+        if TELEMETRY_FILE.exists():
+            return _json.loads(TELEMETRY_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return []
+
+def _save_logs(logs: list):
+    try:
+        TELEMETRY_FILE.write_text(_json.dumps(logs, ensure_ascii=False), encoding="utf-8")
+    except Exception as e:
+        print(f"⚠️ Error guardando telemetría: {e}")
+
+def log_download(code: str, query: str, fmt: str, dl_type: str, ok: bool):
+    """Registra una descarga en el archivo de telemetría."""
+    entry = {
+        "ts":     datetime.utcnow().isoformat(),
+        "code":   code,
+        "query":  query[:200] if query else "",
+        "format": fmt,
+        "type":   dl_type,   # single | batch | playlist | spotify
+        "ok":     ok,
+    }
+    with _TELE_LOCK:
+        logs = _load_logs()
+        logs.append(entry)
+        # Mantener solo los últimos 5000 registros
+        if len(logs) > 5000:
+            logs = logs[-5000:]
+        _save_logs(logs)
+
+def _compute_telemetry() -> dict:
+    """Calcula las estadísticas agregadas para el panel admin."""
+    from collections import Counter
+    logs = _load_logs()
+    total      = len(logs)
+    mp3_count  = sum(1 for l in logs if l.get("format") == "mp3")
+    mp4_count  = sum(1 for l in logs if l.get("format") == "mp4")
+    users      = len({l.get("code") for l in logs if l.get("code")})
+
+    song_ctr  = Counter(l.get("query","") for l in logs if l.get("query"))
+    code_ctr  = Counter(l.get("code","")  for l in logs if l.get("code"))
+    type_ctr  = Counter(l.get("type","")  for l in logs if l.get("type"))
+
+    type_labels = {"single":"Individual","batch":"Batch","playlist":"Playlist YT","spotify":"Spotify"}
+
+    return {
+        "total":        total,
+        "mp3_count":    mp3_count,
+        "mp4_count":    mp4_count,
+        "unique_users": users,
+        "top_songs":    [{"name":k,"count":v} for k,v in song_ctr.most_common(10)],
+        "top_codes":    [{"name":k,"count":v} for k,v in code_ctr.most_common(10)],
+        "top_types":    [{"name":type_labels.get(k,k),"count":v} for k,v in type_ctr.most_common()],
+        "logs":         logs,
+    }
 # ======================================================
 
 # ============== SESIONES CON COOKIE FIRMADA ===========
@@ -44,9 +121,9 @@ COOKIE_NAME  = "rockola_session"
 COOKIE_MAX_AGE = 60 * 60 * 24 * 7   # 7 días en segundos
 
 
-def _make_session_cookie(is_admin: bool) -> str:
+def _make_session_cookie(is_admin: bool, code: str = "") -> str:
     """Crea un token firmado con los datos de sesión."""
-    return _serializer.dumps({"authenticated": True, "is_admin": is_admin})
+    return _serializer.dumps({"authenticated": True, "is_admin": is_admin, "code": code})
 
 
 def _read_session_cookie(token: str) -> Optional[dict]:
@@ -427,28 +504,22 @@ def run_batch_task(task_id: str, lines: list, format_type: str, batch_folder: st
 # ==================== ENDPOINTS DE AUTENTICACIÓN ====================
 
 @app.post("/api/validate_code")
-def validate_access_code(response: Response, code: str = Form(...)):
-    """
-    Valida el código de acceso.
-    Si es correcto, emite una cookie de sesión firmada con itsdangerous.
-    La cookie es httponly (JavaScript no puede leerla) y firmada
-    (no puede ser falsificada ni modificada).
-    """
+def validate_access_code(request: Request, code: str = Form(...)):
     result = auth.validate_code(code)
-
+    json_response = JSONResponse(result)
     if result.get("valid"):
         is_admin = result.get("is_admin", False)
-        token    = _make_session_cookie(is_admin)
-        response.set_cookie(
+        token    = _make_session_cookie(is_admin, code=code)
+        json_response.set_cookie(
             key      = COOKIE_NAME,
             value    = token,
-            httponly = True,          # JS no puede leerla → protege contra XSS
-            samesite = "lax",         # Protege contra CSRF básico
-            secure   = False,         # Cambia a True si usas HTTPS
+            httponly = True,
+            samesite = "none" if False else "lax",
+            secure   = False,
             max_age  = COOKIE_MAX_AGE,
+            path     = "/",
         )
-
-    return JSONResponse(result)
+    return json_response
 
 
 @app.post("/api/logout")
@@ -460,6 +531,7 @@ def logout(response: Response):
 
 @app.get("/api/me")
 def me(session: dict = Depends(require_auth)):
+    print(f"🔍 SESSION DATA: {session}")  # ← agrega esto
     """
     Endpoint para que el frontend compruebe si la sesión sigue activa.
     Útil al recargar la página para no mostrar el modal innecesariamente.
@@ -497,6 +569,16 @@ def delete_code(code: str = Form(...), session: dict = Depends(require_admin)):
     else:
         return JSONResponse({"success": False, "message": "No se puede eliminar este código"})
 
+@app.get("/api/admin/telemetry")
+def get_telemetry(session: dict = Depends(require_admin)):
+    return JSONResponse(_compute_telemetry())
+
+@app.post("/api/admin/telemetry/clear")
+def clear_telemetry(session: dict = Depends(require_admin)):
+    with _TELE_LOCK:
+        _save_logs([])
+    return JSONResponse({"success": True})
+
 # =====================================================================
 
 # ------------------ PÁGINAS ------------------
@@ -509,12 +591,7 @@ def root():
     return JSONResponse({"message": "Index no encontrado"})
 
 @app.get(f"/{ADMIN_SECRET_PATH}")
-def admin_panel(session: dict = Depends(require_admin)):
-    """
-    Panel de administración en ruta secreta.
-    Requiere autenticación de admin a nivel de servidor —
-    ya no basta con conocer la URL ni con manipular el DOM.
-    """
+def admin_panel():
     admin_path = BASE_DIR / "admin.html"
     if admin_path.exists():
         return FileResponse(admin_path)
@@ -529,11 +606,13 @@ def admin_old():
 
 @app.post("/download/")
 def download_single(
+    request: Request,
     url: str         = Form(...),
     format_type: str = Form("mp3"),
-    _session: dict   = Depends(require_auth),   # 🔒
+    _session: dict   = Depends(require_auth),
 ):
-    query        = url.strip()
+    code  = _session.get("code", "unknown")
+    query = url.strip()
     input_is_url = is_url(query)
     resolved_url = clean_url(query) if input_is_url else f"ytsearch1:{query}"
 
@@ -605,9 +684,11 @@ def download_single(
                 print(f"⚠️ Error metadatos: {e}")
 
         threading.Thread(target=delayed_cleanup, args=(downloaded_file, 60), daemon=True).start()
+        log_download(_session.get("code","?"), query, format_type, "single", True)
         return FileResponse(path=downloaded_file, filename=simple_filename, media_type="application/octet-stream")
 
     except HTTPException:
+        log_download(_session.get("code","?"), query, format_type, "single", False)
         raise
     except Exception as e:
         traceback.print_exc()
@@ -621,9 +702,10 @@ def download_single(
 
 @app.post("/download_batch_start/")
 async def download_batch_start(
+    request: Request,
     file: UploadFile  = File(...),
     format_type: str  = Form("mp3"),
-    _session: dict    = Depends(require_auth),   # 🔒
+    _session: dict    = Depends(require_auth),
 ):
     content = await file.read()
     if file.filename.endswith('.xlsx') or file.filename.endswith('.xls'):
@@ -654,14 +736,16 @@ async def download_batch_start(
         }
 
     threading.Thread(target=run_batch_task, args=(task_id, lines, format_type, batch_folder), daemon=True).start()
+    log_download(_session.get("code","?"), f"[batch:{len(lines)} canciones]", format_type, "batch", True)
     return {"task_id": task_id, "message": "Tarea iniciada."}
 
 
 @app.post("/download_batch_text/")
 async def download_batch_text(
+    request: Request,
     text: str        = Form(...),
     format_type: str = Form("mp3"),
-    _session: dict   = Depends(require_auth),   # 🔒
+    _session: dict   = Depends(require_auth),
 ):
     lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
     if not lines:
@@ -679,6 +763,7 @@ async def download_batch_text(
         }
 
     threading.Thread(target=run_batch_task, args=(task_id, lines, format_type, batch_folder), daemon=True).start()
+    log_download(_session.get("code","?"), f"[texto:{len(lines)} canciones]", format_type, "batch", True)
     return {"task_id": task_id, "message": "Tarea iniciada desde texto."}
 
 
@@ -718,9 +803,10 @@ def download_result(task_id: str, _session: dict = Depends(require_auth)):   # �
 
 @app.post("/download_playlist/")
 def download_playlist(
+    request: Request,
     url: str         = Form(...),
     format_type: str = Form("mp3"),
-    _session: dict   = Depends(require_auth),   # 🔒
+    _session: dict   = Depends(require_auth),
 ):
     url          = clean_url(url)
     playlist_id  = str(uuid.uuid4())
@@ -753,6 +839,7 @@ def download_playlist(
         create_zip_on_disk(playlist_folder, zip_path)
         shutil.rmtree(playlist_folder)
         threading.Thread(target=delayed_cleanup, args=(zip_path, CLEANUP_AFTER), daemon=True).start()
+        log_download(_session.get("code","?"), url, format_type, "playlist", True)
         return FileResponse(path=zip_path, filename="playlist_download.zip", media_type="application/zip")
     except Exception as e:
         if os.path.exists(playlist_folder):
@@ -891,9 +978,10 @@ def run_spotify_task(task_id: str, playlist_url: str, format_type: str, batch_fo
 
 @app.post("/download_spotify_playlist/")
 async def download_spotify_playlist(
+    request: Request,
     url: str         = Form(...),
     format_type: str = Form("mp3"),
-    _session: dict   = Depends(require_auth),   # 🔒
+    _session: dict   = Depends(require_auth),
 ):
     url = url.strip()
     if "spotify.com" not in url:
@@ -911,6 +999,7 @@ async def download_spotify_playlist(
         }
 
     threading.Thread(target=run_spotify_task, args=(task_id, url, format_type, batch_folder), daemon=True).start()
+    log_download(_session.get("code","?"), url, format_type, "spotify", True)
     return {"task_id": task_id, "message": "Tarea Spotify iniciada."}
 
 

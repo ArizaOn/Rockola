@@ -18,6 +18,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 pip install mutagen
 python main.py
+echo 'SESSION_SECRET="61DJ]dD=s_1TvAsqe"' > .env
 ```
 
 Abre el navegador en http://localhost:5000
